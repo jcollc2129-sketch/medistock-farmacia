@@ -2,5 +2,10 @@ name = "medistock-farmacia"
 compatibility_date = "2024-10-01"
 pages_build_output_dir = "."
 
-# Opcional: sincronizacion entre dispositivos
-# Binding KV: MEDISTOCK_KV
+# Opcional: sincronización entre dispositivos
+# 1. En Cloudflare Dashboard → Workers & Pages → KV → Create namespace
+# 2. En el proyecto Pages → Settings → Functions → KV bindings
+#    Variable name: MEDISTOCK_KV  →  el namespace que creaste
+# [[kv_namespaces]]
+# binding = "MEDISTOCK_KV"
+# id = "pon_aqui_el_id_del_namespace"

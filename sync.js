@@ -91,6 +91,7 @@ async function pullFromCloud() {
     const remoteTime = new Date(data.updatedAt || 0).getTime();
     const localTime = new Date(local.updatedAt || 0).getTime();
 
+    // Si la nube tiene datos más recientes o el local está vacío → importar
     const localEmpty =
       (local.medicamentos || []).length === 0 &&
       (local.movimientos || []).length === 0;
@@ -102,6 +103,7 @@ async function pullFromCloud() {
       return { ok: true, imported: true };
     }
 
+    // Local más reciente → subir
     await pushToCloud();
     return { ok: true, pushed: true };
   } catch (e) {
@@ -126,17 +128,17 @@ function updateSyncStatus(ok) {
   if (!el) return;
   const last = localStorage.getItem("medistock_last_sync");
   if (!navigator.onLine) {
-    el.textContent = "Sin conexion (datos locales)";
+    el.textContent = "📴 Sin conexión (datos locales)";
     el.style.color = "#d97706";
     return;
   }
   if (ok) {
     el.textContent = last
-      ? "Sincronizado " + new Date(last).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
-      : "Conectado";
+      ? "☁️ Sincronizado " + new Date(last).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
+      : "☁️ Conectado";
     el.style.color = "#16a34a";
   } else {
-    el.textContent = "Error de sincronizacion";
+    el.textContent = "⚠️ Error de sincronización";
     el.style.color = "#dc2626";
   }
 }
@@ -152,7 +154,7 @@ async function manualSync() {
   } else {
     const push = await pushToCloud();
     if (push.ok) showToast("Datos guardados en la nube");
-    else if (push.offline) showToast("Sin conexion: se guardo solo en este dispositivo");
+    else if (push.offline) showToast("Sin conexión: se guardó solo en este dispositivo");
     else showToast("No se pudo sincronizar: " + (push.error || ""));
   }
   syncing = false;
@@ -163,6 +165,7 @@ window.addEventListener("online", () => {
   scheduleSync();
 });
 window.addEventListener("offline", () => updateSyncStatus(false));
+
 
 async function exportBackupFile() {
   const data = await exportAllData();
@@ -187,10 +190,10 @@ function importBackupFile() {
       const text = await file.text();
       const data = JSON.parse(text);
       if (!data.medicamentos && !data.users) {
-        showToast("Archivo no valido");
+        showToast("Archivo no válido");
         return;
       }
-      if (!confirm("Importar esta copia? Se reemplazaran los datos de este dispositivo.")) return;
+      if (!confirm("¿Importar esta copia? Se reemplazarán los datos de este dispositivo.")) return;
       await importAllData(data);
       showToast("Copia importada");
       if (typeof loadDashboard === "function") loadDashboard();

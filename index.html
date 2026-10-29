@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Control de entradas y salidas de medicamentos - Offline">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+  <title>MediStock Farmacia</title>
+</head>
+<body>
+
+  <!-- ========== LOGIN ========== -->
+  <div id="login-screen">
+    <div class="login-card">
+      <h1>💊 MediStock</h1>
+      <p class="subtitle">Control de farmacia · Offline</p>
+      <div id="login-error" class="error-msg"></div>
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label>Usuario</label>
+          <input type="text" id="login-username" required autocomplete="username" placeholder="admin">
+        </div>
+        <div class="form-group">
+          <label>Contraseña</label>
+          <input type="password" id="login-password" required autocomplete="current-password" placeholder="••••••••">
+        </div>
+        <button type="submit" class="btn btn-primary">Entrar</button>
+      </form>
+      <div class="text-center mt-16" style="border-top:1px solid #e2e8f0;padding-top:16px;">
+        <p class="text-sm text-muted mb-8">o entra con tu código QR</p>
+        <button type="button" class="btn btn-secondary w-full" onclick="startLoginQrScanner()">📷 Escanear código QR</button>
+      </div>
+      <p class="text-sm text-muted text-center mt-16">
+        Demo: <strong>admin</strong> / admin123<br>
+        o <strong>operario</strong> / operario123
+      </p>
+    </div>
+  </div>
+
+  <!-- ========== APP ========== -->
+  <div id="app">
+    <header class="header">
+      <div>
+        <h1>💊 MediStock</h1>
+        <div class="user-info" id="header-user"></div>
+      </div>
+      <div class="header-actions" style="flex-direction:column;align-items:flex-end;gap:4px;">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-sm btn-secondary" onclick="manualSync()" title="Sincronizar">☁️</button>
+          <button class="btn btn-sm btn-secondary" onclick="exportBackupFile()" title="Exportar copia">💾</button>
+          <button class="btn btn-sm btn-secondary" onclick="importBackupFile()" title="Importar copia">📥</button>
+          <button class="btn btn-sm btn-secondary" onclick="logout()" title="Cerrar sesión">Salir</button>
+        </div>
+        <div id="sync-status" class="text-sm" style="font-size:0.7rem;opacity:0.95;">☁️ ...</div>
+      </div>
+    </header>
+
+    <!-- DASHBOARD -->
+    <div id="screen-dashboard" class="screen">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="number" id="stat-meds">0</div>
+          <div class="label">Medicamentos</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="stat-stock">0</div>
+          <div class="label">Stock total</div>
+        </div>
+        <div class="stat-card alert">
+          <div class="number" id="stat-caducados">0</div>
+          <div class="label">Caducados</div>
+        </div>
+        <div class="stat-card warning">
+          <div class="number" id="stat-proximos">0</div>
+          <div class="label">Caducan ≤30d</div>
+        </div>
+      </div>
+
+      <div class="flex gap-12 mb-8">
+        <button class="btn btn-success" style="flex:1" onclick="openMovimiento('entrada')">➕ Entrada</button>
+        <button class="btn btn-danger" style="flex:1" onclick="openMovimiento('salida')">➖ Salida</button>
+      </div>
+
+      <h3 class="section-title">Últimos movimientos</h3>
+      <div class="card" id="recent-movs"></div>
+    </div>
+
+    <!-- INVENTARIO -->
+    <div id="screen-inventario" class="screen">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="search" id="search-inventario" placeholder="Buscar nombre, principio, código, ubicación..." oninput="filterInventario()">
+      </div>
+      <div id="med-list"></div>
+      <button class="fab" onclick="openNuevoMed()" title="Nuevo medicamento">+</button>
+    </div>
+
+    <!-- ALERTAS -->
+    <div id="screen-alertas" class="screen">
+      <h3 class="section-title">⚠️ Alertas de caducidad</h3>
+      <div id="alertas-list"></div>
+    </div>
+
+    <!-- MOVIMIENTOS -->
+    <div id="screen-movimientos" class="screen">
+      <h3 class="section-title">📋 Historial de movimientos</h3>
+      <div id="movimientos-list"></div>
+    </div>
+
+    <!-- USUARIOS (solo admin) -->
+    <div id="screen-usuarios" class="screen">
+      <div class="flex-between mb-8">
+        <h3 class="section-title" style="margin:0">👥 Usuarios</h3>
+        <button class="btn btn-sm btn-primary" onclick="openNuevoUsuario()">+ Nuevo</button>
+      </div>
+      <div id="usuarios-list"></div>
+    </div>
+
+    <!-- BOTTOM NAV -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-screen="dashboard" onclick="navigate('dashboard')">
+        <span class="icon">🏠</span>
+        <span>Inicio</span>
+      </button>
+      <button class="nav-item" data-screen="inventario" onclick="navigate('inventario')">
+        <span class="icon">💊</span>
+        <span>Inventario</span>
+      </button>
+      <button class="nav-item" data-screen="alertas" onclick="navigate('alertas')">
+        <span class="icon">⚠️</span>
+        <span>Alertas</span>
+      </button>
+      <button class="nav-item" data-screen="movimientos" onclick="navigate('movimientos')">
+        <span class="icon">📋</span>
+        <span>Historial</span>
+      </button>
+      <button class="nav-item" data-screen="usuarios" onclick="navigate('usuarios')">
+        <span class="icon">👥</span>
+        <span>Usuarios</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ========== MODAL DETALLE ========== -->
+  <div id="modal-detalle" class="modal-overlay" onclick="if(event.target===this)closeDetalle()">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="detalle-titulo">—</h2>
+        <button class="modal-close" onclick="closeDetalle()">×</button>
+      </div>
+      <input type="hidden" id="detalle-med-id">
+
+      <img id="detalle-foto" class="photo-preview" style="display:none;max-width:100%;height:auto;">
+
+      <div class="form-group">
+        <label>Principio activo</label>
+        <div id="detalle-principio">—</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Código de barras</label>
+          <div id="detalle-barcode">—</div>
+        </div>
+        <div class="form-group">
+          <label>Categoría</label>
+          <div id="detalle-categoria">—</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Ubicación</label>
+          <div id="detalle-ubicacion">—</div>
+        </div>
+        <div class="form-group">
+          <label>Stock total</label>
+          <div id="detalle-stock" style="font-weight:700;font-size:1.2rem">—</div>
+        </div>
+      </div>
+
+      <div class="flex gap-8 mt-12">
+        <button class="btn btn-success" style="flex:1" onclick="fromDetalleEntrada()">➕ Entrada</button>
+        <button class="btn btn-danger" style="flex:1" onclick="fromDetalleSalida()">➖ Salida</button>
+        <button class="btn btn-secondary" onclick="openEditarMed()">✏️</button>
+      </div>
+
+      <h3 class="section-title">Lotes</h3>
+      <div id="detalle-lotes"></div>
+
+      <h3 class="section-title">Últimos movimientos</h3>
+      <div id="detalle-movs"></div>
+    </div>
+  </div>
+
+  <!-- ========== MODAL NUEVO/EDITAR MED ========== -->
+  <div id="modal-med" class="modal-overlay" onclick="if(event.target===this)closeModalMed()">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="form-med-title">Nuevo medicamento</h2>
+        <button class="modal-close" onclick="closeModalMed()">×</button>
+      </div>
+
+      <form id="form-med" onsubmit="saveMedicamento(event)">
+        <div class="form-group">
+          <label>Código de barras</label>
+          <div class="flex gap-8">
+            <input type="text" id="med-barcode" placeholder="Escanear o escribir" style="flex:1">
+            <button type="button" class="btn btn-secondary" onclick="startScanner('med-barcode')">📷</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Nombre comercial *</label>
+          <input type="text" id="med-nombre" required placeholder="Ej: Paracetamol 1g">
+        </div>
+
+        <div class="form-group">
+          <label>Principio activo</label>
+          <input type="text" id="med-principio" placeholder="Ej: Paracetamol">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tipo / Categoría</label>
+            <select id="med-categoria">
+              <option value="comprimidos">Comprimidos</option>
+              <option value="capsulas">Cápsulas</option>
+              <option value="ampollas">Ampollas</option>
+              <option value="vial">Vial</option>
+              <option value="jarabe">Jarabe</option>
+              <option value="crema">Crema</option>
+              <option value="otico">Ótico</option>
+              <option value="oftalmologico">Oftalmológico</option>
+              <option value="ovulos">Óvulos</option>
+              <option value="sobres">Sobres</option>
+              <option value="gotas">Gotas</option>
+              <option value="supositorios">Supositorios</option>
+              <option value="otros">Otros</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Ubicación</label>
+            <input type="text" id="med-ubicacion" placeholder="Ej: Estantería A-3">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Notas</label>
+          <textarea id="med-notas" rows="2" placeholder="Observaciones..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Foto del medicamento</label>
+          <div class="photo-actions">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="capturePhoto()">📷 Hacer / Elegir foto</button>
+            <button type="button" class="btn btn-sm btn-danger" onclick="removePhoto()">Eliminar</button>
+          </div>
+          <input type="file" id="med-foto-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoSelect(event)">
+          <img id="med-foto-preview" class="photo-preview" style="display:none">
+        </div>
+
+        <button type="submit" class="btn btn-primary w-full mt-16">Guardar medicamento</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========== MODAL MOVIMIENTO ========== -->
+  <div id="modal-mov" class="modal-overlay" onclick="if(event.target===this)closeModalMov()">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="form-mov-title">Movimiento</h2>
+        <button class="modal-close" onclick="closeModalMov()">×</button>
+      </div>
+
+      <form id="form-mov" onsubmit="saveMovimiento(event)">
+        <input type="hidden" id="mov-tipo">
+        <input type="hidden" id="mov-med-id">
+
+        <div class="form-group">
+          <label>Seleccionar medicamento *</label>
+          <select id="mov-med-select" onchange="onMedSelectChange(this.value)">
+            <option value="">— Elige un medicamento —</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>O escanear / escribir código de barras</label>
+          <div class="flex gap-8">
+            <input type="text" id="mov-barcode" placeholder="Escanear o escribir código" style="flex:1" oninput="lookupBarcodeForMov(this.value)">
+            <button type="button" class="btn btn-secondary" onclick="startScanner('mov-barcode')">📷</button>
+          </div>
+        </div>
+
+        <div id="mov-med-info" style="display:none" class="card mb-8">
+          <strong id="mov-med-nombre">—</strong>
+        </div>
+
+        <!-- Crear medicamento nuevo si no existe (solo en entradas) -->
+        <div id="nuevo-med-group" style="display:none; background:#f8fafc; border-radius:12px; padding:14px; margin-bottom:16px; border:1px dashed #cbd5e1;">
+          <p class="text-sm" style="font-weight:600; margin-bottom:10px;">➕ Medicamento nuevo (rellena estos datos)</p>
+          <div class="form-group">
+            <label>Nombre comercial *</label>
+            <input type="text" id="mov-nuevo-nombre" placeholder="Ej: Paracetamol 1g">
+          </div>
+          <div class="form-group">
+            <label>Principio activo</label>
+            <input type="text" id="mov-nuevo-principio" placeholder="Ej: Paracetamol">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Tipo / Categoría</label>
+              <select id="mov-nuevo-categoria">
+                <option value="comprimidos">Comprimidos</option>
+                <option value="capsulas">Cápsulas</option>
+                <option value="ampollas">Ampollas</option>
+                <option value="vial">Vial</option>
+                <option value="jarabe">Jarabe</option>
+                <option value="crema">Crema</option>
+                <option value="otico">Ótico</option>
+                <option value="oftalmologico">Oftalmológico</option>
+                <option value="ovulos">Óvulos</option>
+                <option value="sobres">Sobres</option>
+                <option value="gotas">Gotas</option>
+                <option value="supositorios">Supositorios</option>
+                <option value="otros">Otros</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Ubicación</label>
+              <input type="text" id="mov-nuevo-ubicacion" placeholder="Ej: Estantería A-3">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Cantidad *</label>
+          <input type="number" id="mov-cantidad" min="1" required placeholder="0">
+        </div>
+
+        <div class="form-group">
+          <label>Lote existente <span class="text-muted text-sm">(opcional)</span></label>
+          <select id="mov-lotes-select" onchange="onLoteSelectChange()">
+            <option value="">— Ninguno / Crear nuevo —</option>
+          </select>
+        </div>
+
+        <div id="nuevo-lote-group">
+          <div class="form-group">
+            <label>Número de lote nuevo <span class="text-muted text-sm">(opcional)</span></label>
+            <input type="text" id="mov-nuevo-lote" placeholder="Ej: Lote 12345 o déjalo vacío">
+          </div>
+          <div class="form-group">
+            <label>Caducidad <span class="text-muted text-sm">(opcional)</span></label>
+            <input type="date" id="mov-nueva-caducidad">
+          </div>
+          <p class="text-sm text-muted" style="margin-top:-8px;margin-bottom:12px;">
+            Si no rellenas lote ni caducidad, se creará automáticamente como “S/N”.
+          </p>
+        </div>
+
+        <div class="form-group">
+          <label>Motivo</label>
+          <select id="mov-motivo">
+            <option value="Compra">Compra</option>
+            <option value="Venta">Venta</option>
+            <option value="Devolución">Devolución</option>
+            <option value="Caducado">Caducado</option>
+            <option value="Rotura">Rotura</option>
+            <option value="Ajuste">Ajuste de inventario</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-full mt-16">Registrar movimiento</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========== MODAL USUARIO ========== -->
+  <div id="modal-user" class="modal-overlay" onclick="if(event.target===this)closeModalUser()">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Nuevo usuario</h2>
+        <button class="modal-close" onclick="closeModalUser()">×</button>
+      </div>
+      <form id="form-user" onsubmit="saveUsuario(event)">
+        <div class="form-group">
+          <label>Nombre completo</label>
+          <input type="text" id="user-nombre" required>
+        </div>
+        <div class="form-group">
+          <label>Usuario</label>
+          <input type="text" id="user-username" required>
+        </div>
+        <div class="form-group">
+          <label>Contraseña</label>
+          <input type="password" id="user-password" required>
+        </div>
+        <div class="form-group">
+          <label>Rol</label>
+          <select id="user-rol">
+            <option value="operario">Operario</option>
+            <option value="admin">Administrador</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary w-full">Crear usuario</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- SCANNER GLOBAL (outside modals for reliability) -->
+  <div id="scanner-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:400;flex-direction:column;align-items:center;justify-content:center;padding:20px;">
+    <div id="scanner-container" style="width:100%;max-width:360px;border-radius:12px;overflow:hidden;"></div>
+    <button class="btn btn-danger mt-16" onclick="stopScanner()" style="margin-top:20px;">Cerrar cámara</button>
+  </div>
+
+
+  <!-- ========== MODAL QR USUARIO ========== -->
+  <div id="modal-qr-user" class="modal-overlay" onclick="if(event.target===this)closeModalQrUser()">
+    <div class="modal" style="text-align:center;">
+      <div class="modal-header">
+        <h2 id="qr-user-title">Código QR de acceso</h2>
+        <button class="modal-close" onclick="closeModalQrUser()">×</button>
+      </div>
+      <p class="text-sm text-muted mb-8" id="qr-user-subtitle">Escanea este código para entrar sin contraseña</p>
+      <div id="qr-user-canvas" style="display:flex;justify-content:center;margin:16px 0;"></div>
+      <p class="text-sm" style="font-family:monospace;letter-spacing:2px;" id="qr-user-token"></p>
+      <p class="text-sm text-muted mt-12">Cada usuario tiene su propio código. Compártelo solo con esa persona.</p>
+      <button type="button" class="btn btn-secondary w-full mt-16" onclick="closeModalQrUser()">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="db.js"></script>
+  <script src="sync.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
