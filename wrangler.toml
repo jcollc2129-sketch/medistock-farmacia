@@ -1,0 +1,6 @@
+name = "medistock-farmacia"
+compatibility_date = "2024-10-01"
+pages_build_output_dir = "."
+
+# Opcional: sincronizacion entre dispositivos
+# Binding KV: MEDISTOCK_KV
