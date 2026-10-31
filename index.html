@@ -52,6 +52,7 @@
         <div style="display:flex;gap:8px;align-items:center;">
           <button class="btn btn-sm btn-secondary" onclick="manualSync()" title="Sincronizar">☁️</button>
           <button class="btn btn-sm btn-secondary" onclick="exportBackupFile()" title="Exportar copia">💾</button>
+          <button class="btn btn-sm btn-secondary" onclick="cargarDotacion()" title="Cargar dotación mínima">📋</button>
           <button class="btn btn-sm btn-secondary" onclick="importBackupFile()" title="Importar copia">📥</button>
           <button class="btn btn-sm btn-secondary" onclick="logout()" title="Cerrar sesión">Salir</button>
         </div>
@@ -162,8 +163,18 @@
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Código de barras</label>
-          <div id="detalle-barcode">—</div>
+          <label>Dosis</label>
+          <div id="detalle-dosis">—</div>
+        </div>
+        <div class="form-group">
+          <label>Presentación</label>
+          <div id="detalle-presentacion">—</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Grupo terapéutico</label>
+          <div id="detalle-grupo">—</div>
         </div>
         <div class="form-group">
           <label>Categoría</label>
@@ -172,12 +183,22 @@
       </div>
       <div class="form-row">
         <div class="form-group">
+          <label>Código de barras</label>
+          <div id="detalle-barcode">—</div>
+        </div>
+        <div class="form-group">
           <label>Ubicación</label>
           <div id="detalle-ubicacion">—</div>
         </div>
+      </div>
+      <div class="form-row">
         <div class="form-group">
           <label>Stock total</label>
           <div id="detalle-stock" style="font-weight:700;font-size:1.2rem">—</div>
+        </div>
+        <div class="form-group">
+          <label>Stock mínimo</label>
+          <div id="detalle-stock-minimo">—</div>
         </div>
       </div>
 
@@ -213,13 +234,35 @@
         </div>
 
         <div class="form-group">
-          <label>Nombre comercial *</label>
-          <input type="text" id="med-nombre" required placeholder="Ej: Paracetamol 1g">
+          <label>Nombre comercial</label>
+          <input type="text" id="med-nombre" placeholder="Marca (opcional, se puede poner después)">
         </div>
 
         <div class="form-group">
-          <label>Principio activo</label>
-          <input type="text" id="med-principio" placeholder="Ej: Paracetamol">
+          <label>Principio activo *</label>
+          <input type="text" id="med-principio" required placeholder="Ej: Paracetamol">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Dosis</label>
+            <input type="text" id="med-dosis" placeholder="Ej: 500 mg">
+          </div>
+          <div class="form-group">
+            <label>Presentación</label>
+            <input type="text" id="med-presentacion" placeholder="Ej: E/20 Comp.">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Grupo terapéutico</label>
+            <input type="text" id="med-grupo" placeholder="Ej: Antibióticos">
+          </div>
+          <div class="form-group">
+            <label>Stock mínimo</label>
+            <input type="number" id="med-stock-minimo" min="0" step="1" placeholder="0" value="0">
+          </div>
         </div>
 
         <div class="form-row">
@@ -439,6 +482,7 @@
   <!-- Scripts -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="db.js"></script>
+  <script src="dotacion.js"></script>
   <script src="sync.js"></script>
   <script src="app.js"></script>
 </body>

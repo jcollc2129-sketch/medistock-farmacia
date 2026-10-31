@@ -18,6 +18,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   await openDB();
   await initDefaultAdmin();
+  const seed = await seedDotacionIfEmpty();
+  if (seed.seeded) {
+    console.log('Dotación cargada:', seed.count, 'medicamentos');
+  }
   checkSession();
 });
 
@@ -253,7 +257,8 @@ async function loadInventario(filter = '') {
       gotas: 'Gotas', supositorios: 'Supositorios', otros: 'Otros'
     };
     const catLabel = catLabels[m.categoria] || m.categoria || 'Otros';
-    const stockBadge = stock <= 5 ? 'badge-bajo' : 'badge-stock';
+    const min = m.stockMinimo != null ? m.stockMinimo : 0;
+    const stockBadge = (min > 0 && stock < min) || stock <= 5 ? 'badge-bajo' : 'badge-stock';
 
     html += `
       <div class="card med-item" onclick="openDetalleMed(${m.id})">
@@ -261,11 +266,11 @@ async function loadInventario(filter = '') {
           ? `<img class="med-photo" src="${m.foto}" alt="">`
           : `<div class="med-photo placeholder">💊</div>`}
         <div class="med-info">
-          <div class="name">${escapeHtml(m.nombreComercial)}</div>
-          <div class="principio">${escapeHtml(m.principioActivo || '')}</div>
+          <div class="name">${escapeHtml(m.nombreComercial || m.principioActivo || 'Sin nombre')}</div>
+          <div class="principio">${escapeHtml([m.principioActivo, m.dosis, m.presentacion].filter(Boolean).join(' · '))}</div>
           <div class="meta">
             <span class="badge ${catBadge}">${catLabel}</span>
-            <span class="badge ${stockBadge}">${stock} uds</span>
+            <span class="badge ${stockBadge}">${stock}${min > 0 ? '/' + min : ''} uds</span>
             ${m.ubicacion ? ` · 📍 ${escapeHtml(m.ubicacion)}` : ''}
           </div>
         </div>
@@ -292,8 +297,16 @@ async function openDetalleMed(id) {
   const en30 = new Date();
   en30.setDate(en30.getDate() + 30);
 
-  document.getElementById('detalle-titulo').textContent = med.nombreComercial;
+  document.getElementById('detalle-titulo').textContent = med.nombreComercial || med.principioActivo;
   document.getElementById('detalle-principio').textContent = med.principioActivo || '—';
+  const elDosis = document.getElementById('detalle-dosis');
+  if (elDosis) elDosis.textContent = med.dosis || '—';
+  const elPres = document.getElementById('detalle-presentacion');
+  if (elPres) elPres.textContent = med.presentacion || '—';
+  const elGrupo = document.getElementById('detalle-grupo');
+  if (elGrupo) elGrupo.textContent = med.grupoTerapeutico || '—';
+  const elMin = document.getElementById('detalle-stock-minimo');
+  if (elMin) elMin.textContent = (med.stockMinimo != null ? med.stockMinimo : 0) + ' uds';
   document.getElementById('detalle-barcode').textContent = med.barcode || '—';
   document.getElementById('detalle-categoria').textContent = med.categoria || '—';
   document.getElementById('detalle-ubicacion').textContent = med.ubicacion || '—';
@@ -385,6 +398,10 @@ async function openEditarMed() {
   document.getElementById('med-barcode').value = med.barcode || '';
   document.getElementById('med-nombre').value = med.nombreComercial || '';
   document.getElementById('med-principio').value = med.principioActivo || '';
+  document.getElementById('med-dosis').value = med.dosis || '';
+  document.getElementById('med-presentacion').value = med.presentacion || '';
+  document.getElementById('med-grupo').value = med.grupoTerapeutico || '';
+  document.getElementById('med-stock-minimo').value = med.stockMinimo != null ? med.stockMinimo : 0;
   document.getElementById('med-categoria').value = med.categoria || 'comprimidos';
   document.getElementById('med-ubicacion').value = med.ubicacion || '';
   document.getElementById('med-notas').value = med.notas || '';
@@ -411,12 +428,16 @@ async function saveMedicamento(e) {
   const barcode = document.getElementById('med-barcode').value.trim();
   const nombre = document.getElementById('med-nombre').value.trim();
   const principio = document.getElementById('med-principio').value.trim();
+  const dosis = document.getElementById('med-dosis').value.trim();
+  const presentacion = document.getElementById('med-presentacion').value.trim();
+  const grupo = document.getElementById('med-grupo').value.trim();
+  const stockMinimo = parseInt(document.getElementById('med-stock-minimo').value) || 0;
   const categoria = document.getElementById('med-categoria').value;
   const ubicacion = document.getElementById('med-ubicacion').value.trim();
   const notas = document.getElementById('med-notas').value.trim();
 
-  if (!nombre) {
-    showToast('El nombre comercial es obligatorio');
+  if (!principio && !nombre) {
+    showToast('Indica al menos principio activo o nombre comercial');
     return;
   }
 
@@ -431,8 +452,12 @@ async function saveMedicamento(e) {
 
   const data = {
     barcode: barcode || null,
-    nombreComercial: nombre,
+    nombreComercial: nombre || (principio + (dosis ? ' ' + dosis : '')),
     principioActivo: principio,
+    dosis,
+    presentacion,
+    grupoTerapeutico: grupo,
+    stockMinimo,
     categoria,
     ubicacion,
     notas,
@@ -791,6 +816,8 @@ async function loadAlertas() {
   en90.setDate(en90.getDate() + 90);
 
   const alerts = [];
+
+  // Caducidad
   for (const l of lotes) {
     if (l.cantidad <= 0) continue;
     const cad = new Date(l.caducidad);
@@ -804,6 +831,7 @@ async function loadAlertas() {
 
     if (nivel) {
       alerts.push({
+        tipo: 'caducidad',
         med,
         lote: l,
         nivel,
@@ -812,20 +840,54 @@ async function loadAlertas() {
     }
   }
 
-  alerts.sort((a, b) => new Date(a.lote.caducidad) - new Date(b.lote.caducidad));
+  // Stock bajo mínimo (dotación)
+  for (const med of meds) {
+    const min = med.stockMinimo != null ? med.stockMinimo : 0;
+    if (min <= 0) continue;
+    const stock = await getStockTotal(med.id);
+    if (stock < min) {
+      alerts.push({
+        tipo: 'stock',
+        med,
+        stock,
+        min,
+        nivel: 'bajo_minimo'
+      });
+    }
+  }
+
+  alerts.sort((a, b) => {
+    if (a.tipo !== b.tipo) return a.tipo === 'stock' ? -1 : 1;
+    if (a.tipo === 'caducidad') return new Date(a.lote.caducidad) - new Date(b.lote.caducidad);
+    return (a.stock / a.min) - (b.stock / b.min);
+  });
 
   const container = document.getElementById('alertas-list');
   if (alerts.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="icon">✅</div>No hay alertas de caducidad</div>';
+    container.innerHTML = '<div class="empty-state"><div class="icon">✅</div>No hay alertas de caducidad ni de stock mínimo</div>';
     return;
   }
 
   let html = '';
   for (const a of alerts) {
+    if (a.tipo === 'stock') {
+      html += `
+      <div class="alert-item" onclick="openDetalleMed(${a.med.id})">
+        <div class="med-photo placeholder">📉</div>
+        <div class="med-info">
+          <div class="name">${escapeHtml(a.med.nombreComercial || a.med.principioActivo)}</div>
+          <div class="principio">Stock ${a.stock} / mínimo ${a.min}</div>
+          <div class="meta">
+            <span class="badge badge-bajo">BAJO MÍNIMO</span>
+            ${a.med.grupoTerapeutico ? escapeHtml(a.med.grupoTerapeutico) : ''}
+          </div>
+        </div>
+      </div>`;
+      continue;
+    }
     const badge = a.nivel === 'caducado' ? 'badge-caducado' :
                   a.nivel === 'proximo30' ? 'badge-proximo' : 'badge-bajo';
-    const label = a.nivel === 'caducado' ? 'CADUCADO' :
-                  a.nivel === 'proximo30' ? `${a.dias} días` : `${a.dias} días`;
+    const label = a.nivel === 'caducado' ? 'CADUCADO' : `${a.dias} días`;
 
     html += `
       <div class="alert-item" onclick="openDetalleMed(${a.med.id})">
@@ -833,7 +895,7 @@ async function loadAlertas() {
           ? `<img class="med-photo" src="${a.med.foto}" alt="">`
           : `<div class="med-photo placeholder">💊</div>`}
         <div class="med-info">
-          <div class="name">${escapeHtml(a.med.nombreComercial)}</div>
+          <div class="name">${escapeHtml(a.med.nombreComercial || a.med.principioActivo)}</div>
           <div class="principio">Lote ${escapeHtml(a.lote.numeroLote)} · ${a.lote.cantidad} uds</div>
           <div class="meta">
             <span class="badge ${badge}">${label}</span>
@@ -1006,4 +1068,19 @@ function fromDetalleSalida() {
       }
     }, 150);
   });
+}
+
+
+async function cargarDotacion() {
+  if (!currentUser || currentUser.rol !== 'admin') {
+    showToast('Solo administradores');
+    return;
+  }
+  if (!confirm('¿Añadir medicamentos de la dotación mínima que aún no estén en el inventario?')) return;
+  showToast('Cargando dotación...');
+  const n = await importarDotacionFaltante();
+  showToast(n > 0 ? ('Añadidos ' + n + ' de la dotación') : 'La dotación ya estaba completa');
+  scheduleSync();
+  loadInventario();
+  loadDashboard();
 }

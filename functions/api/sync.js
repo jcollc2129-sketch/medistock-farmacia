@@ -17,6 +17,7 @@ export async function onRequest(context) {
     return new Response(null, { status: 204, headers: cors });
   }
 
+  // Si no hay KV configurado, la app sigue en modo solo local
   if (!env.MEDISTOCK_KV) {
     return new Response(
       JSON.stringify({ error: "KV no configurado", localOnly: true }),
