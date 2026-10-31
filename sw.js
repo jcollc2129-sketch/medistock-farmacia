@@ -1,10 +1,11 @@
-const CACHE_NAME = 'medistock-v7';
+const CACHE_NAME = 'medistock-v8';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
   './db.js',
+  './dotacion.js',
   './sync.js',
   './manifest.json',
   './icon-192.png',
