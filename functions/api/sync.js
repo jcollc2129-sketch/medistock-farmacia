@@ -1,5 +1,5 @@
 // Cloudflare Pages Function — sincronización entre dispositivos
-// Binding: MEDISTOCK_KV (o KV)
+// Requiere un KV namespace enlazado como binding: MEDISTOCK_KV
 
 const KEY = "farmacia-data";
 
@@ -17,6 +17,7 @@ export async function onRequest(context) {
     return new Response(null, { status: 204, headers: cors });
   }
 
+  // Acepta MEDISTOCK_KV (recomendado) o KV (nombre por defecto del panel)
   const kv = env.MEDISTOCK_KV || env.KV;
   if (!kv) {
     return new Response(

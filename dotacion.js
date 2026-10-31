@@ -328,6 +328,51 @@ async function importarDotacionFaltante() {
   return added;
 }
 
+
+// Medicamentos de USO HOSPITALARIO
+const DOTACION_HOSPITALARIO = [
+  { nombreComercial: "ACTOCORTINA 373 mg POLVO PARA SOLUCIÓN INYECTABLE, 10 viales", presentacion: "Viales", stockMinimo: 20, categoria: "vial" },
+  { nombreComercial: "ACTOCORTINA 75 MG POLVO Y DISOLVENTE PARA SOLUCIÓN INYECTABLE, 10 viales", presentacion: "Viales", stockMinimo: 20, categoria: "vial" },
+  { nombreComercial: "ADENOCOR 6 mg/2 ml SOLUCIÓN INYECTABLE, 6 viales de 2 ml", presentacion: "Viales", stockMinimo: 24, categoria: "vial" },
+  { nombreComercial: "ADRENALINA B. BRAUN 1 mg/ml SOLUCIÓN INYECTABLE, 10 ampollas de 1 ml", presentacion: "Ampollas", stockMinimo: 0, categoria: "ampollas" },
+  { nombreComercial: "ANEXATE 0,5 mg/5 ml SOLUCIÓN INYECTABLE, 5 ampollas de 5 ml", presentacion: "Ampollas", stockMinimo: 5, categoria: "ampollas" },
+  { nombreComercial: "ANEXATE 1 mg/10 ml SOLUCIÓN INYECTABLE, 5 ampollas de 10 ml", presentacion: "Ampollas", stockMinimo: 5, categoria: "ampollas" },
+  { nombreComercial: "APOCARD 10 mg/ml SOLUCIÓN INYECTABLE, 5 ampollas de 15 ml", presentacion: "Ampollas", stockMinimo: 10, categoria: "ampollas" },
+  { nombreComercial: "BICARBONATO SÓDICO 1/6 M MEIN SOLUCIÓN PARA PERFUSIÓN, 12 frascos de 250 m", presentacion: "Frasco", stockMinimo: 0, categoria: "otros" },
+  { nombreComercial: "BICARBONATO SÓDICO 1M GRIFOLS SOLUCIÓN INYECTABLE, 100 ampollas de 10 ml", presentacion: "Ampollas", stockMinimo: 20, categoria: "ampollas" },
+  { nombreComercial: "CISATRACURIO NORMON 2 mg/ml SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN EFG, 5 viales de 5 ml", presentacion: "Viales", stockMinimo: 10, categoria: "vial" },
+  { nombreComercial: "CLORURO DE POTASIO BRAUN 1 mEq/ml CONCENTRADO PARA SOLUCIÓN PARA PERFUSIÓN, 20 x 10 ml (MP Connect)", presentacion: "Ampollas", stockMinimo: 20, categoria: "ampollas" },
+  { nombreComercial: "CLORURO DE POTASIO BRAUN 2 mEq/ml CONCENTRADO PARA SOLUCIÓN PARA PERFUSIÓN, 20 x 20 ml (MP Connect)", presentacion: "Ampollas", stockMinimo: 0, categoria: "ampollas" },
+  { nombreComercial: "DIPRIVAN 10 mg/ml EMULSIÓN INYECTABLE Y PARA PERFUSIÓN, 5 ampollas de 20 ml", presentacion: "Ampollas", stockMinimo: 10, categoria: "ampollas" },
+  { nombreComercial: "DOPAMINA GRIFOLS 200 mg SOLUCIÓN INYECTABLE, 6 ampollas de 5 ml", presentacion: "Ampollas", stockMinimo: 18, categoria: "ampollas" },
+  { nombreComercial: "ELGADIL 5 mg/ml SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN, 50 ampollas de 10 ml", presentacion: "Ampollas", stockMinimo: 25, categoria: "ampollas" },
+  { nombreComercial: "ETOMIDATO-LIPURO 2 mg/ml EMULSIÓN INYECTABLE, 10 ampollas de 10 ml", presentacion: "Ampollas", stockMinimo: 20, categoria: "ampollas" },
+  { nombreComercial: "FENITOINA RUBIO 50 MG/ML SOLUCIÓN INYECTABLE, 1 ampolla de 2 ml", presentacion: "Ampollas", stockMinimo: 10, categoria: "ampollas" },
+  { nombreComercial: "FENTANEST 0,05 mg/ml SOLUCIÓN INYECTABLE, 5 ampollas de 3 ml", presentacion: "Ampollas", stockMinimo: 0, categoria: "ampollas" },
+  { nombreComercial: "GELASPAN 40 MG/ML SOLUCIÓN PARA PERFUSIÓN, 10 frascos de 500 ml", presentacion: "Frasco", stockMinimo: 10, categoria: "otros" },
+  { nombreComercial: "GLUCOCEMIN 33% SOLUCIÓN INYECTABLE 20 ampollas de 10 ml (MP Classic)", presentacion: "Ampollas", stockMinimo: 30, categoria: "ampollas" },
+  { nombreComercial: "HIDROCLORURO DE EFEDRINA KABI 30 mg/ml SOLUCIÓN INYECTABLE, 10 ampollas de 1 ml", presentacion: "Ampollas", stockMinimo: 20, categoria: "ampollas" },
+  { nombreComercial: "KETOLAR 50 mg/ml SOLUCIÓN INYECTABLE, 1 vial de 10 ml", presentacion: "Viales", stockMinimo: 5, categoria: "vial" },
+  { nombreComercial: "MEPIVACAINA B. BRAUN 10 MG/ML SOLUCIÓN INYECTABLE, 100 ampollas de 10 ml", presentacion: "Ampollas", stockMinimo: 25, categoria: "ampollas" },
+  { nombreComercial: "MEPIVACAINA B. BRAUN 20 MG/ML SOLUCIÓN INYECTABLE, 100 ampollas de 10 ml", presentacion: "Ampollas", stockMinimo: 25, categoria: "ampollas" },
+  { nombreComercial: "MIDAZOLAM B. BRAUN 5 mg/ml SOLUCIÓN PARA INYECCIÓN/PERFUSIÓN EFG, 20 ampollas de 10 ml (LDPE Miniplasco Connect)", presentacion: "Ampollas", stockMinimo: 40, categoria: "ampollas" },
+  { nombreComercial: "MIDAZOLAM NORMON 1 MG/ML SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN EFG, 10 ampollas de 5 ml", presentacion: "Ampollas", stockMinimo: 20, categoria: "ampollas" },
+  { nombreComercial: "NITROPRUSSIAT FIDES 50 MG POLVO Y DISOLVENTE PARA SOLUCIÓN INYECTABLE, 1 vial + 1 ampolla de disolvente", presentacion: "Viales", stockMinimo: 5, categoria: "vial" },
+  { nombreComercial: "NORADRENALINA NORMON 0,5 MG/ML CONCENTRADO PARA SOLUCIÓN PARA PERFUSIÓN EFG, 100 ampollas de 10 ml", presentacion: "Ampollas", stockMinimo: 40, categoria: "ampollas" },
+  { nombreComercial: "OMEPRAZOL NORMON 40 mg POLVO PARA SOLUCIÓN PARA PERFUSIÓN EFG, 50 viales", presentacion: "Viales", stockMinimo: 50, categoria: "vial" },
+  { nombreComercial: "PARACETAMOL B. BRAUN 10 mg/ml SOLUCIÓN PARA PERFUSIÓN EFG, 10 frascos de 100 ml", presentacion: "Frasco", stockMinimo: 0, categoria: "otros" },
+  { nombreComercial: "PROPOFOL LIPURO 10 mg/ml EMULSIÓN INYECTABLE Y PARA PERFUSIÓN, 10 viales de 100 ml", presentacion: "Viales", stockMinimo: 20, categoria: "vial" },
+  { nombreComercial: "PROPOFOL LIPOVEN FRESENIUS 20 mg/ml EMULSIÓN INYECTABLE Y PARA PERFUSIÓN, 10 viales de 100 ml", presentacion: "Viales", stockMinimo: 20, categoria: "vial" },
+  { nombreComercial: "ROCURONIO B. BRAUN 10 mg/ml SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN EFG, 20 ampollas de 5 ml", presentacion: "Ampollas", stockMinimo: 40, categoria: "ampollas" },
+  { nombreComercial: "SOLINTRINA FUERTE 5 mg/ml solución inyectable, 12 ampollas de 10 ml", presentacion: "Ampollas", stockMinimo: 12, categoria: "ampollas" },
+  { nombreComercial: "SULFATO DE MAGNESIO ALTAN 150 MG/ML SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN EFG, 10 ampollas de 10 ml", presentacion: "Ampollas", stockMinimo: 10, categoria: "ampollas" },
+  { nombreComercial: "SUPLECAL MINIPLASCO SOLUCIÓN INYECTABLE, 20 ampollas de 10 ml (miniplasco classic)", presentacion: "Ampollas", stockMinimo: 20, categoria: "ampollas" },
+  { nombreComercial: "SUXAMETONIO ETHYPHARM 50 MG/ML SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN EFG, 10 ampollas de 2 ml", presentacion: "Ampollas", stockMinimo: 30, categoria: "ampollas" },
+  { nombreComercial: "TENORMIN 0,5 mg/ml SOLUCIÓN INYECTABLE, 5 ampollas de 10 ml", presentacion: "Ampollas", stockMinimo: 5, categoria: "ampollas" },
+  { nombreComercial: "TORADOL 30 mg/1 ml SOLUCIÓN INYECTABLE, 6 ampollas de 1 ml", presentacion: "Ampollas", stockMinimo: 24, categoria: "ampollas" },
+  { nombreComercial: "TRANGOREX 150 mg / 3 ml SOLUCIÓN INYECTABLE, 6 ampollas de 3 ml", presentacion: "Ampollas", stockMinimo: 0, categoria: "ampollas" },
+];
+
 async function importarNoCargoFaltante() {
   const meds = await getMedicamentos();
   const key = (m) => (m.nombreComercial || "").toLowerCase().trim();
@@ -364,5 +409,43 @@ async function seedNoCargoIfEmpty() {
   const hasNoCargo = meds.some(m => m.tipoStock === "no_cargo");
   if (hasNoCargo) return { seeded: false, count: 0 };
   const n = await importarNoCargoFaltante();
+  return { seeded: n > 0, count: n };
+}
+
+async function importarHospitalarioFaltante() {
+  const meds = await getMedicamentos();
+  const key = (m) => (m.nombreComercial || "").toLowerCase().trim();
+  const existing = new Set(meds.map(key));
+  let added = 0;
+  for (const d of DOTACION_HOSPITALARIO) {
+    const k = (d.nombreComercial || "").toLowerCase().trim();
+    if (existing.has(k)) continue;
+    await addMedicamento({
+      barcode: null,
+      nombreComercial: d.nombreComercial,
+      principioActivo: d.nombreComercial.split(",")[0].trim(),
+      dosis: "",
+      presentacion: d.presentacion || "",
+      grupoTerapeutico: "Uso hospitalario",
+      categoria: d.categoria || "ampollas",
+      stockMinimo: d.stockMinimo || 0,
+      ubicacion: "",
+      notas: "Uso hospitalario",
+      foto: null,
+      esDotacion: false,
+      tipoStock: "hospitalario",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    existing.add(k);
+    added++;
+  }
+  return added;
+}
+
+async function seedHospitalarioIfEmpty() {
+  const meds = await getMedicamentos();
+  if (meds.some(m => m.tipoStock === "hospitalario")) return { seeded: false, count: 0 };
+  const n = await importarHospitalarioFaltante();
   return { seeded: n > 0, count: n };
 }

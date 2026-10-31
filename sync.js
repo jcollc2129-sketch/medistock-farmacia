@@ -67,8 +67,14 @@ async function pushToCloud() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const json = await res.json();
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      if (res.status === 503 || json.localOnly) {
+        updateSyncStatus(false, "nube-no-config");
+        return { ok: false, error: "Nube no configurada (KV). Datos solo en este dispositivo.", localOnly: true };
+      }
+      throw new Error(json.error || ("HTTP " + res.status));
+    }
     localStorage.setItem("medistock_last_sync", json.syncedAt || new Date().toISOString());
     updateSyncStatus(true);
     return { ok: true };
@@ -83,8 +89,14 @@ async function pullFromCloud() {
   if (!navigator.onLine) return { ok: false, offline: true };
   try {
     const res = await fetch(SYNC_URL, { method: "GET" });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const data = await res.json();
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      if (res.status === 503 || (data && data.localOnly)) {
+        updateSyncStatus(false, "nube-no-config");
+        return { ok: false, error: "Nube no configurada (KV)", localOnly: true };
+      }
+      throw new Error((data && data.error) || ("HTTP " + res.status));
+    }
     if (!data) return { ok: true, empty: true };
 
     const local = await exportAllData();
@@ -123,12 +135,17 @@ function scheduleSync() {
   }, 800);
 }
 
-function updateSyncStatus(ok) {
+function updateSyncStatus(ok, reason) {
   const el = document.getElementById("sync-status");
   if (!el) return;
   const last = localStorage.getItem("medistock_last_sync");
   if (!navigator.onLine) {
     el.textContent = "📴 Sin conexión (datos locales)";
+    el.style.color = "#d97706";
+    return;
+  }
+  if (reason === "nube-no-config") {
+    el.textContent = "⚠️ Nube no activa (solo este móvil)";
     el.style.color = "#d97706";
     return;
   }
@@ -155,6 +172,7 @@ async function manualSync() {
     const push = await pushToCloud();
     if (push.ok) showToast("Datos guardados en la nube");
     else if (push.offline) showToast("Sin conexión: se guardó solo en este dispositivo");
+    else if (push.localOnly) showToast("Nube no configurada: los cambios quedan solo en este móvil");
     else showToast("No se pudo sincronizar: " + (push.error || ""));
   }
   syncing = false;

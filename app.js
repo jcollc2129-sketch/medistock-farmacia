@@ -26,6 +26,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (seed2.seeded) {
     console.log('No cargo cargados:', seed2.count, 'medicamentos');
   }
+  const seed3 = await seedHospitalarioIfEmpty();
+  if (seed3.seeded) {
+    console.log('Hospitalario cargados:', seed3.count, 'medicamentos');
+  }
   checkSession();
 });
 
@@ -275,7 +279,7 @@ async function loadInventario(filter = '') {
           <div class="meta">
             <span class="badge ${catBadge}">${catLabel}</span>
             <span class="badge ${stockBadge}">${stock}${min > 0 ? '/' + min : ''} uds</span>
-            <span class="badge ${m.tipoStock === 'no_cargo' ? 'badge-no-cargo' : 'badge-cargo'}">${m.tipoStock === 'no_cargo' ? 'No cargo' : 'Cargo'}</span>
+            <span class="badge ${m.tipoStock === 'no_cargo' ? 'badge-no-cargo' : (m.tipoStock === 'hospitalario' ? 'badge-hosp' : 'badge-cargo')}">${m.tipoStock === 'no_cargo' ? 'No cargo' : (m.tipoStock === 'hospitalario' ? 'Hospitalario' : 'Cargo')}</span>
             ${m.ubicacion ? ` · 📍 ${escapeHtml(m.ubicacion)}` : ''}
           </div>
         </div>
@@ -313,7 +317,7 @@ async function openDetalleMed(id) {
   const elMin = document.getElementById('detalle-stock-minimo');
   if (elMin) elMin.textContent = (med.stockMinimo != null ? med.stockMinimo : 0) + ' uds';
   const elTipo = document.getElementById('detalle-tipo-stock');
-  if (elTipo) elTipo.textContent = med.tipoStock === 'no_cargo' ? 'No cargo' : 'Cargo';
+  if (elTipo) elTipo.textContent = med.tipoStock === 'no_cargo' ? 'No cargo' : (med.tipoStock === 'hospitalario' ? 'Uso hospitalario' : 'Cargo');
   document.getElementById('detalle-barcode').textContent = med.barcode || '—';
   document.getElementById('detalle-categoria').textContent = med.categoria || '—';
   document.getElementById('detalle-ubicacion').textContent = med.ubicacion || '—';
@@ -1214,7 +1218,8 @@ async function cargarDotacion() {
   showToast('Cargando dotación...');
   const n = await importarDotacionFaltante();
   const n2 = await importarNoCargoFaltante();
-  showToast(`Catálogos: +${n} cargo, +${n2} no cargo`);
+  const n3 = await importarHospitalarioFaltante();
+  showToast(`Catálogos: +${n} cargo, +${n2} no cargo, +${n3} hospitalario`);
   scheduleSync();
   loadInventario();
   loadDashboard();
@@ -1225,9 +1230,14 @@ let filtroCargoActual = 'cargo';
 
 function setFiltroCargo(tipo) {
   filtroCargoActual = tipo;
-  ['cargo', 'no_cargo', 'todos'].forEach(t => {
-    const id = t === 'no_cargo' ? 'btn-filtro-no-cargo' : (t === 'todos' ? 'btn-filtro-todos' : 'btn-filtro-cargo');
-    const btn = document.getElementById(id);
+  const map = {
+    cargo: 'btn-filtro-cargo',
+    no_cargo: 'btn-filtro-no-cargo',
+    hospitalario: 'btn-filtro-hosp',
+    todos: 'btn-filtro-todos'
+  };
+  Object.keys(map).forEach(t => {
+    const btn = document.getElementById(map[t]);
     if (!btn) return;
     btn.className = 'btn btn-sm ' + (filtroCargoActual === t ? 'btn-primary' : 'btn-secondary');
     btn.style.flex = '1';
@@ -1236,6 +1246,7 @@ function setFiltroCargo(tipo) {
   if (hint) {
     if (tipo === 'cargo') hint.textContent = 'Dotación mínima (cargo) — control de stock obligatorio';
     else if (tipo === 'no_cargo') hint.textContent = 'No cargo — pedidos y control por separado';
+    else if (tipo === 'hospitalario') hint.textContent = 'Uso hospitalario — stock y pedidos de hospital';
     else hint.textContent = 'Todos los medicamentos';
   }
   loadCargoList();
@@ -1246,9 +1257,11 @@ async function loadCargoList() {
   const q = ((document.getElementById('search-cargo') || {}).value || '').toLowerCase().trim();
   let list = meds;
   if (filtroCargoActual === 'cargo') {
-    list = meds.filter(m => (m.tipoStock || 'cargo') !== 'no_cargo');
+    list = meds.filter(m => (m.tipoStock || 'cargo') === 'cargo');
   } else if (filtroCargoActual === 'no_cargo') {
     list = meds.filter(m => m.tipoStock === 'no_cargo');
+  } else if (filtroCargoActual === 'hospitalario') {
+    list = meds.filter(m => m.tipoStock === 'hospitalario');
   }
   if (q) {
     list = list.filter(m =>
@@ -1271,13 +1284,13 @@ async function loadCargoList() {
     const bajo = min > 0 && stock < min;
     html += `
       <div class="card med-item" onclick="openDetalleMed(${m.id})">
-        <div class="med-photo placeholder">${m.tipoStock === 'no_cargo' ? '📋' : '📦'}</div>
+        <div class="med-photo placeholder">${m.tipoStock === 'no_cargo' ? '📋' : (m.tipoStock === 'hospitalario' ? '🏥' : '📦')}</div>
         <div class="med-info">
           <div class="name">${escapeHtml(m.nombreComercial || m.principioActivo)}</div>
           <div class="principio">${escapeHtml([m.presentacion, m.principioActivo].filter(Boolean).join(' · '))}</div>
           <div class="meta">
             <span class="badge ${bajo ? 'badge-bajo' : 'badge-stock'}">${stock}${min > 0 ? '/' + min : ''} uds</span>
-            <span class="badge ${m.tipoStock === 'no_cargo' ? 'badge-no-cargo' : 'badge-cargo'}">${m.tipoStock === 'no_cargo' ? 'No cargo' : 'Cargo'}</span>
+            <span class="badge ${m.tipoStock === 'no_cargo' ? 'badge-no-cargo' : (m.tipoStock === 'hospitalario' ? 'badge-hosp' : 'badge-cargo')}">${m.tipoStock === 'no_cargo' ? 'No cargo' : (m.tipoStock === 'hospitalario' ? 'Hospitalario' : 'Cargo')}</span>
           </div>
         </div>
       </div>`;
@@ -1297,7 +1310,8 @@ async function cargarCatalogos() {
   showToast('Cargando catálogos...');
   const n1 = await importarDotacionFaltante();
   const n2 = await importarNoCargoFaltante();
-  showToast(`Añadidos: ${n1} cargo, ${n2} no cargo`);
+  const n3 = await importarHospitalarioFaltante();
+  showToast(`Añadidos: ${n1} cargo, ${n2} no cargo, ${n3} hospitalario`);
   scheduleSync();
   loadCargoList();
   loadInventario();
