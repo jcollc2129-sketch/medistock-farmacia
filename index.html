@@ -119,6 +119,7 @@
         <button class="btn btn-sm btn-primary" id="btn-filtro-cargo" onclick="setFiltroCargo('cargo')" style="flex:1">📦 Cargo</button>
         <button class="btn btn-sm btn-secondary" id="btn-filtro-no-cargo" onclick="setFiltroCargo('no_cargo')" style="flex:1">📋 No cargo</button>
         <button class="btn btn-sm btn-secondary" id="btn-filtro-hosp" onclick="setFiltroCargo('hospitalario')" style="flex:1">🏥 Hosp.</button>
+        <button class="btn btn-sm btn-secondary" id="btn-filtro-estup" onclick="setFiltroCargo('estupefaciente')" style="flex:1">⚠️ Estup.</button>
         <button class="btn btn-sm btn-secondary" id="btn-filtro-todos" onclick="setFiltroCargo('todos')" style="flex:1">Todos</button>
       </div>
       <p class="text-sm text-muted" id="cargo-hint" style="margin:-4px 0 12px">Medicamentos de dotación (cargo) vs no cargo — pedidos por separado</p>
@@ -296,6 +297,7 @@
             <option value="cargo">Cargo (dotación mínima)</option>
             <option value="no_cargo">No cargo (pedido aparte)</option>
             <option value="hospitalario">Uso hospitalario</option>
+            <option value="estupefaciente">Estupefaciente</option>
           </select>
         </div>
 

@@ -703,3 +703,5 @@ body {
 .badge-estup { background: #ffe4e6; color: #9f1239; font-weight: 700; }
 #mov-medico-group { background: #fff1f2; padding: 12px; border-radius: 10px; border: 1px solid #fecdd3; }
 #mov-medico-group label { color: #9f1239; }
+
+#screen-cargo .btn-sm { font-size: 0.72rem; padding: 8px 6px; }

@@ -533,6 +533,7 @@ async function importarEstupefacientesFaltante() {
       const med = meds.find(m => key(m) === k);
       if (med && !med.esEstupefaciente) {
         med.esEstupefaciente = true;
+        med.tipoStock = "estupefaciente";
         med.updatedAt = new Date().toISOString();
         await updateMedicamento(med);
       }
@@ -551,7 +552,7 @@ async function importarEstupefacientesFaltante() {
       notas: "Estupefaciente — requiere médico solicitante en salidas",
       foto: null,
       esDotacion: false,
-      tipoStock: "no_cargo",
+      tipoStock: "estupefaciente",
       esEstupefaciente: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()

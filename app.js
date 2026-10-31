@@ -299,8 +299,15 @@ async function loadInventario(filter = '') {
           <div class="meta">
             <span class="badge ${catBadge}">${catLabel}</span>
             <span class="badge ${stockBadge}">${stock}${min > 0 ? '/' + min : ''} uds</span>
-            <span class="badge ${m.tipoStock === 'no_cargo' ? 'badge-no-cargo' : (m.tipoStock === 'hospitalario' ? 'badge-hosp' : 'badge-cargo')}">${m.tipoStock === 'no_cargo' ? 'No cargo' : (m.tipoStock === 'hospitalario' ? 'Hospitalario' : 'Cargo')}</span>
-            ${m.esEstupefaciente ? '<span class="badge badge-estup">⚠️ Estupefaciente</span>' : ''}
+            <span class="badge ${
+              (m.tipoStock === 'estupefaciente' || m.esEstupefaciente) ? 'badge-estup' :
+              m.tipoStock === 'no_cargo' ? 'badge-no-cargo' :
+              m.tipoStock === 'hospitalario' ? 'badge-hosp' : 'badge-cargo'
+            }">${
+              (m.tipoStock === 'estupefaciente' || m.esEstupefaciente) ? '⚠️ Estupefaciente' :
+              m.tipoStock === 'no_cargo' ? 'No cargo' :
+              m.tipoStock === 'hospitalario' ? 'Hospitalario' : 'Cargo'
+            }</span>
             ${m.ubicacion ? ` · 📍 ${escapeHtml(m.ubicacion)}` : ''}
           </div>
         </div>
@@ -338,7 +345,12 @@ async function openDetalleMed(id) {
   const elMin = document.getElementById('detalle-stock-minimo');
   if (elMin) elMin.textContent = (med.stockMinimo != null ? med.stockMinimo : 0) + ' uds';
   const elTipo = document.getElementById('detalle-tipo-stock');
-  if (elTipo) elTipo.textContent = med.tipoStock === 'no_cargo' ? 'No cargo' : (med.tipoStock === 'hospitalario' ? 'Uso hospitalario' : 'Cargo');
+  if (elTipo) {
+    if (med.tipoStock === 'estupefaciente' || med.esEstupefaciente) elTipo.textContent = '⚠️ Estupefaciente';
+    else if (med.tipoStock === 'no_cargo') elTipo.textContent = 'No cargo';
+    else if (med.tipoStock === 'hospitalario') elTipo.textContent = 'Uso hospitalario';
+    else elTipo.textContent = 'Cargo';
+  }
   document.getElementById('detalle-barcode').textContent = med.barcode || '—';
   document.getElementById('detalle-categoria').textContent = med.categoria || '—';
   document.getElementById('detalle-ubicacion').textContent = med.ubicacion || '—';
@@ -469,7 +481,8 @@ async function saveMedicamento(e) {
   const grupo = document.getElementById('med-grupo').value.trim();
   const stockMinimo = parseInt(document.getElementById('med-stock-minimo').value) || 0;
   const tipoStock = (document.getElementById('med-tipo-stock') || {}).value || 'cargo';
-  const esEstupefaciente = !!(document.getElementById('med-estupefaciente') || {}).checked;
+  let esEstupefaciente = !!(document.getElementById('med-estupefaciente') || {}).checked;
+  if (tipoStock === 'estupefaciente') esEstupefaciente = true;
   const categoria = document.getElementById('med-categoria').value;
   const ubicacion = document.getElementById('med-ubicacion').value.trim();
   const notas = document.getElementById('med-notas').value.trim();
@@ -1277,6 +1290,7 @@ function setFiltroCargo(tipo) {
     cargo: 'btn-filtro-cargo',
     no_cargo: 'btn-filtro-no-cargo',
     hospitalario: 'btn-filtro-hosp',
+    estupefaciente: 'btn-filtro-estup',
     todos: 'btn-filtro-todos'
   };
   Object.keys(map).forEach(t => {
@@ -1290,6 +1304,7 @@ function setFiltroCargo(tipo) {
     if (tipo === 'cargo') hint.textContent = 'Dotación mínima (cargo) — control de stock obligatorio';
     else if (tipo === 'no_cargo') hint.textContent = 'No cargo — pedidos y control por separado';
     else if (tipo === 'hospitalario') hint.textContent = 'Uso hospitalario — stock y pedidos de hospital';
+    else if (tipo === 'estupefaciente') hint.textContent = 'Estupefacientes — requieren médico solicitante al retirar';
     else hint.textContent = 'Todos los medicamentos';
   }
   loadCargoList();
@@ -1305,6 +1320,8 @@ async function loadCargoList() {
     list = meds.filter(m => m.tipoStock === 'no_cargo');
   } else if (filtroCargoActual === 'hospitalario') {
     list = meds.filter(m => m.tipoStock === 'hospitalario');
+  } else if (filtroCargoActual === 'estupefaciente') {
+    list = meds.filter(m => m.tipoStock === 'estupefaciente' || m.esEstupefaciente);
   }
   if (q) {
     list = list.filter(m =>
@@ -1327,14 +1344,21 @@ async function loadCargoList() {
     const bajo = min > 0 && stock < min;
     html += `
       <div class="card med-item" onclick="openDetalleMed(${m.id})">
-        <div class="med-photo placeholder">${m.tipoStock === 'no_cargo' ? '📋' : (m.tipoStock === 'hospitalario' ? '🏥' : '📦')}</div>
+        <div class="med-photo placeholder">${(m.tipoStock === 'estupefaciente' || m.esEstupefaciente) ? '⚠️' : (m.tipoStock === 'no_cargo' ? '📋' : (m.tipoStock === 'hospitalario' ? '🏥' : '📦'))}</div>
         <div class="med-info">
           <div class="name">${escapeHtml(m.nombreComercial || m.principioActivo)}</div>
           <div class="principio">${escapeHtml([m.presentacion, m.principioActivo].filter(Boolean).join(' · '))}</div>
           <div class="meta">
             <span class="badge ${bajo ? 'badge-bajo' : 'badge-stock'}">${stock}${min > 0 ? '/' + min : ''} uds</span>
-            <span class="badge ${m.tipoStock === 'no_cargo' ? 'badge-no-cargo' : (m.tipoStock === 'hospitalario' ? 'badge-hosp' : 'badge-cargo')}">${m.tipoStock === 'no_cargo' ? 'No cargo' : (m.tipoStock === 'hospitalario' ? 'Hospitalario' : 'Cargo')}</span>
-            ${m.esEstupefaciente ? '<span class="badge badge-estup">⚠️ Estupefaciente</span>' : ''}
+            <span class="badge ${
+              (m.tipoStock === 'estupefaciente' || m.esEstupefaciente) ? 'badge-estup' :
+              m.tipoStock === 'no_cargo' ? 'badge-no-cargo' :
+              m.tipoStock === 'hospitalario' ? 'badge-hosp' : 'badge-cargo'
+            }">${
+              (m.tipoStock === 'estupefaciente' || m.esEstupefaciente) ? '⚠️ Estupefaciente' :
+              m.tipoStock === 'no_cargo' ? 'No cargo' :
+              m.tipoStock === 'hospitalario' ? 'Hospitalario' : 'Cargo'
+            }</span>
           </div>
         </div>
       </div>`;
@@ -1385,3 +1409,11 @@ async function updateMedicoField() {
     if (hint) hint.textContent = '⚠️ ESTUPEFACIENTE: indica el médico solicitante. Quedará registrado quién retira y el médico.';
   }
 }
+
+// Sync checkbox when choosing tipo estupefaciente
+document.addEventListener('change', (e) => {
+  if (e.target && e.target.id === 'med-tipo-stock') {
+    const est = document.getElementById('med-estupefaciente');
+    if (est && e.target.value === 'estupefaciente') est.checked = true;
+  }
+});
