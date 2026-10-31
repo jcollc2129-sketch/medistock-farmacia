@@ -2,13 +2,7 @@ name = "medistock-farmacia"
 compatibility_date = "2024-10-01"
 pages_build_output_dir = "."
 
-# --- SINCRONIZACIÓN EN LA NUBE (obligatorio para compartir entre dispositivos) ---
-# 1. Cloudflare Dashboard → Storage & Databases → KV → Create namespace
-#    Nombre: medistock-data
-# 2. Workers & Pages → medistock-f1a → Settings → Bindings → Add
-#    Type: KV Namespace
-#    Variable name: MEDISTOCK_KV
-#    KV namespace: medistock-data
-# 3. Guardar y hacer un nuevo Deploy (o re-deploy)
-#
-# Cuando esté bien configurado, GET/POST /api/sync dejará de devolver 503.
+# Sincronización entre dispositivos (Cloudflare KV)
+[[kv_namespaces]]
+binding = "MEDISTOCK_KV"
+id = "695a0a12147e40f69bc40772dfae0772"

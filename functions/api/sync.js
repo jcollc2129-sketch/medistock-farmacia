@@ -1,5 +1,5 @@
 // Cloudflare Pages Function — sincronización entre dispositivos
-// Requiere un KV namespace enlazado como binding: MEDISTOCK_KV
+// Binding: MEDISTOCK_KV (o KV)
 
 const KEY = "farmacia-data";
 
@@ -17,8 +17,8 @@ export async function onRequest(context) {
     return new Response(null, { status: 204, headers: cors });
   }
 
-  // Si no hay KV configurado, la app sigue en modo solo local
-  if (!env.MEDISTOCK_KV) {
+  const kv = env.MEDISTOCK_KV || env.KV;
+  if (!kv) {
     return new Response(
       JSON.stringify({ error: "KV no configurado", localOnly: true }),
       { status: 503, headers: cors }
@@ -27,7 +27,7 @@ export async function onRequest(context) {
 
   try {
     if (request.method === "GET") {
-      const raw = await env.MEDISTOCK_KV.get(KEY);
+      const raw = await kv.get(KEY);
       const data = raw ? JSON.parse(raw) : null;
       return new Response(JSON.stringify(data), { status: 200, headers: cors });
     }
@@ -41,7 +41,7 @@ export async function onRequest(context) {
         });
       }
       body.syncedAt = new Date().toISOString();
-      await env.MEDISTOCK_KV.put(KEY, JSON.stringify(body));
+      await kv.put(KEY, JSON.stringify(body));
       return new Response(
         JSON.stringify({ ok: true, syncedAt: body.syncedAt }),
         { status: 200, headers: cors }
