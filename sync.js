@@ -4,19 +4,25 @@ let syncTimer = null;
 let syncing = false;
 
 async function exportAllData() {
-  const [users, medicamentos, lotes, movimientos] = await Promise.all([
+  const [users, medicamentos, lotes, movimientos, materiales, lotesMaterial, movimientosMaterial] = await Promise.all([
     getUsers(),
     getMedicamentos(),
     getAllLotes(),
     getAllMovimientos(),
+    getMateriales(),
+    getAllLotesMaterial(),
+    getAllMovimientosMaterial(),
   ]);
   return {
-    version: 1,
+    version: 2,
     updatedAt: new Date().toISOString(),
     users,
     medicamentos,
     lotes,
     movimientos,
+    materiales,
+    lotesMaterial,
+    movimientosMaterial,
   };
 }
 
@@ -51,10 +57,16 @@ async function importAllData(data) {
   await clearStore("medicamentos");
   await clearStore("lotes");
   await clearStore("movimientos");
+  try { await clearStore("materiales"); } catch (e) {}
+  try { await clearStore("lotesMaterial"); } catch (e) {}
+  try { await clearStore("movimientosMaterial"); } catch (e) {}
   await putAll("users", data.users || []);
   await putAll("medicamentos", data.medicamentos || []);
   await putAll("lotes", data.lotes || []);
   await putAll("movimientos", data.movimientos || []);
+  await putAll("materiales", data.materiales || []);
+  await putAll("lotesMaterial", data.lotesMaterial || []);
+  await putAll("movimientosMaterial", data.movimientosMaterial || []);
   return true;
 }
 

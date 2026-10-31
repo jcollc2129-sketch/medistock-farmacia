@@ -130,6 +130,27 @@
       <div id="cargo-list"></div>
     </div>
 
+
+    <!-- MATERIAL SANITARIO (independiente) -->
+    <div id="screen-material" class="screen">
+      <div class="flex-between mb-8">
+        <h2 class="section-title" style="margin:0">Material sanitario</h2>
+        <button class="btn btn-sm btn-primary" onclick="openMaterialForm()">＋ Nuevo</button>
+      </div>
+      <p class="text-sm text-muted mb-8">Registro independiente de medicamentos (guantes, jeringas, apósitos…)</p>
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="search" id="search-material" placeholder="Buscar material..." oninput="loadMaterialList()">
+      </div>
+      <div class="flex gap-8 mb-8">
+        <button class="btn btn-sm btn-secondary" style="flex:1" onclick="openMaterialMovimiento('entrada')">＋ Entrada</button>
+        <button class="btn btn-sm btn-secondary" style="flex:1" onclick="openMaterialMovimiento('salida')">− Salida</button>
+      </div>
+      <div id="material-list"></div>
+      <h3 class="section-title">Últimos movimientos (material)</h3>
+      <div id="material-mov-list"></div>
+    </div>
+
     <!-- USUARIOS (solo admin) -->
     <div id="screen-usuarios" class="screen">
       <div class="flex-between mb-8">
@@ -160,6 +181,10 @@
       <button class="nav-item" data-screen="cargo" onclick="navigate('cargo')">
         <span class="icon">📦</span>
         <span>Cargo</span>
+      </button>
+      <button class="nav-item" data-screen="material" onclick="navigate('material')">
+        <span class="icon">🩹</span>
+        <span>Material</span>
       </button>
       <button class="nav-item" data-screen="usuarios" onclick="navigate('usuarios')">
         <span class="icon">👥</span>
@@ -560,5 +585,112 @@
   <script src="dotacion.js"></script>
   <script src="sync.js"></script>
   <script src="app.js"></script>
+
+  <!-- Modal material -->
+  <div class="modal-overlay" id="modal-material">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-material-title">Nuevo material</h2>
+        <button class="modal-close" onclick="closeModal('modal-material')">×</button>
+      </div>
+      <form id="form-material" onsubmit="saveMaterial(event)">
+        <input type="hidden" id="mat-id">
+        <div class="form-group">
+          <label>Nombre *</label>
+          <input type="text" id="mat-nombre" required placeholder="Ej. Guantes nitrilo M">
+        </div>
+        <div class="form-group">
+          <label>Categoría</label>
+          <select id="mat-categoria">
+            <option value="guantes">Guantes</option>
+            <option value="jeringas">Jeringas / agujas</option>
+            <option value="apositos">Apósitos / apósitos</option>
+            <option value="sondas">Sondas / catéteres</option>
+            <option value="suero">Sistemas suero / llaves</option>
+            <option value="mascarillas">Mascarillas / EPIs</option>
+            <option value="gasas">Gasas / algodón</option>
+            <option value="suturas">Suturas</option>
+            <option value="otros">Otros</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Referencia / código</label>
+            <input type="text" id="mat-referencia" placeholder="Ref. proveedor">
+          </div>
+          <div class="form-group">
+            <label>Código de barras</label>
+            <input type="text" id="mat-barcode" placeholder="Opcional">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Stock mínimo</label>
+            <input type="number" id="mat-stock-minimo" min="0" value="0">
+          </div>
+          <div class="form-group">
+            <label>Ubicación</label>
+            <input type="text" id="mat-ubicacion" placeholder="Estantería / carro">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Notas</label>
+          <input type="text" id="mat-notas" placeholder="Opcional">
+        </div>
+        <button type="submit" class="btn btn-primary">Guardar material</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal movimiento material -->
+  <div class="modal-overlay" id="modal-mat-mov">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-mat-mov-title">Movimiento material</h2>
+        <button class="modal-close" onclick="closeModal('modal-mat-mov')">×</button>
+      </div>
+      <form id="form-mat-mov" onsubmit="saveMaterialMovimiento(event)">
+        <input type="hidden" id="mat-mov-tipo" value="entrada">
+        <div class="form-group">
+          <label>Material *</label>
+          <select id="mat-mov-select" required></select>
+        </div>
+        <div class="form-group">
+          <label>Cantidad *</label>
+          <input type="number" id="mat-mov-cantidad" min="1" step="1" required value="1">
+        </div>
+        <div class="form-group" id="mat-mov-lote-group">
+          <label>Nº lote</label>
+          <input type="text" id="mat-mov-lote" placeholder="S/N si no aplica">
+        </div>
+        <div class="form-group" id="mat-mov-cad-group">
+          <label>Caducidad</label>
+          <input type="date" id="mat-mov-caducidad">
+        </div>
+        <div class="form-group" id="mat-mov-lotes-exist-group" style="display:none">
+          <label>Lote existente *</label>
+          <select id="mat-mov-lotes-select"></select>
+        </div>
+        <div class="form-group">
+          <label>Motivo</label>
+          <select id="mat-mov-motivo">
+            <option value="Recepción / compra">Recepción / compra</option>
+            <option value="Uso">Uso</option>
+            <option value="Caducado">Caducado</option>
+            <option value="Rotura / deterioro">Rotura / deterioro</option>
+            <option value="Ajuste inventario">Ajuste inventario</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Observaciones</label>
+          <input type="text" id="mat-mov-obs" placeholder="Opcional">
+        </div>
+        <p class="text-sm text-muted" id="mat-mov-audit"></p>
+        <button type="submit" class="btn btn-primary">Registrar</button>
+      </form>
+    </div>
+  </div>
+
 </body>
 </html>

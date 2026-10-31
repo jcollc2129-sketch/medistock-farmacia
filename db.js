@@ -1,6 +1,6 @@
 // MediStock - IndexedDB Database Layer
 const DB_NAME = 'MediStockDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let db = null;
 
@@ -47,6 +47,26 @@ function openDB() {
         movStore.createIndex('loteId', 'loteId', { unique: false });
         movStore.createIndex('fecha', 'fecha', { unique: false });
         movStore.createIndex('tipo', 'tipo', { unique: false });
+      }
+
+
+      // Material sanitario (independiente de medicamentos)
+      if (!database.objectStoreNames.contains('materiales')) {
+        const matStore = database.createObjectStore('materiales', { keyPath: 'id', autoIncrement: true });
+        matStore.createIndex('barcode', 'barcode', { unique: false });
+        matStore.createIndex('nombre', 'nombre', { unique: false });
+        matStore.createIndex('categoria', 'categoria', { unique: false });
+      }
+      if (!database.objectStoreNames.contains('lotesMaterial')) {
+        const lm = database.createObjectStore('lotesMaterial', { keyPath: 'id', autoIncrement: true });
+        lm.createIndex('materialId', 'materialId', { unique: false });
+        lm.createIndex('caducidad', 'caducidad', { unique: false });
+      }
+      if (!database.objectStoreNames.contains('movimientosMaterial')) {
+        const mm = database.createObjectStore('movimientosMaterial', { keyPath: 'id', autoIncrement: true });
+        mm.createIndex('materialId', 'materialId', { unique: false });
+        mm.createIndex('fecha', 'fecha', { unique: false });
+        mm.createIndex('tipo', 'tipo', { unique: false });
       }
 
       // Config
@@ -344,4 +364,122 @@ async function initDefaultAdmin() {
       }
     }
   }
+}
+
+
+// ========== MATERIAL SANITARIO ==========
+async function getMateriales() {
+  const database = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('materiales', 'readonly');
+    const req = tx.objectStore('materiales').getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function getMaterialById(id) {
+  const database = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('materiales', 'readonly');
+    const req = tx.objectStore('materiales').get(Number(id));
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function addMaterial(mat) {
+  const database = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('materiales', 'readwrite');
+    const req = tx.objectStore('materiales').add(mat);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function updateMaterial(mat) {
+  const database = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('materiales', 'readwrite');
+    const req = tx.objectStore('materiales').put(mat);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function deleteMaterial(id) {
+  const database = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('materiales', 'readwrite');
+    const req = tx.objectStore('materiales').delete(Number(id));
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function getLotesMaterial(materialId) {
+  const database = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('lotesMaterial', 'readonly');
+    const idx = tx.objectStore('lotesMaterial').index('materialId');
+    const req = idx.getAll(Number(materialId));
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function getAllLotesMaterial() {
+  const database = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('lotesMaterial', 'readonly');
+    const req = tx.objectStore('lotesMaterial').getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function addLoteMaterial(lote) {
+  const database = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('lotesMaterial', 'readwrite');
+    const req = tx.objectStore('lotesMaterial').add(lote);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function updateLoteMaterial(lote) {
+  const database = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('lotesMaterial', 'readwrite');
+    const req = tx.objectStore('lotesMaterial').put(lote);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function getStockMaterial(materialId) {
+  const lotes = await getLotesMaterial(materialId);
+  return lotes.reduce((s, l) => s + (Number(l.cantidad) || 0), 0);
+}
+
+async function getAllMovimientosMaterial() {
+  const database = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('movimientosMaterial', 'readonly');
+    const req = tx.objectStore('movimientosMaterial').getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function addMovimientoMaterial(mov) {
+  const database = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('movimientosMaterial', 'readwrite');
+    const req = tx.objectStore('movimientosMaterial').add(mov);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
 }

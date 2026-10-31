@@ -190,6 +190,7 @@ function navigate(screen) {
   if (screen === 'usuarios') loadUsuarios();
   if (screen === 'movimientos') loadMovimientos();
   if (screen === 'cargo') loadCargoList();
+  if (screen === 'material') { loadMaterialList(); loadMaterialMovimientos(); }
 }
 
 // ========== DASHBOARD ==========
@@ -1417,3 +1418,227 @@ document.addEventListener('change', (e) => {
     if (est && e.target.value === 'estupefaciente') est.checked = true;
   }
 });
+
+
+// ========== MATERIAL SANITARIO ==========
+function openMaterialForm(id) {
+  document.getElementById('form-material').reset();
+  document.getElementById('mat-id').value = '';
+  document.getElementById('modal-material-title').textContent = 'Nuevo material';
+  if (id) {
+    getMaterialById(id).then(m => {
+      if (!m) return;
+      document.getElementById('mat-id').value = m.id;
+      document.getElementById('mat-nombre').value = m.nombre || '';
+      document.getElementById('mat-categoria').value = m.categoria || 'otros';
+      document.getElementById('mat-referencia').value = m.referencia || '';
+      document.getElementById('mat-barcode').value = m.barcode || '';
+      document.getElementById('mat-stock-minimo').value = m.stockMinimo != null ? m.stockMinimo : 0;
+      document.getElementById('mat-ubicacion').value = m.ubicacion || '';
+      document.getElementById('mat-notas').value = m.notas || '';
+      document.getElementById('modal-material-title').textContent = 'Editar material';
+    });
+  }
+  openModal('modal-material');
+}
+
+async function saveMaterial(e) {
+  e.preventDefault();
+  const id = document.getElementById('mat-id').value;
+  const data = {
+    nombre: (document.getElementById('mat-nombre').value || '').trim(),
+    categoria: document.getElementById('mat-categoria').value || 'otros',
+    referencia: (document.getElementById('mat-referencia').value || '').trim() || null,
+    barcode: (document.getElementById('mat-barcode').value || '').trim() || null,
+    stockMinimo: parseInt(document.getElementById('mat-stock-minimo').value) || 0,
+    ubicacion: (document.getElementById('mat-ubicacion').value || '').trim() || null,
+    notas: (document.getElementById('mat-notas').value || '').trim() || null,
+    updatedAt: new Date().toISOString()
+  };
+  if (!data.nombre) {
+    showToast('Indica el nombre del material');
+    return;
+  }
+  if (id) {
+    const existing = await getMaterialById(Number(id));
+    Object.assign(existing, data);
+    await updateMaterial(existing);
+    showToast('Material actualizado');
+  } else {
+    data.createdAt = new Date().toISOString();
+    await addMaterial(data);
+    showToast('Material creado');
+  }
+  closeModal('modal-material');
+  scheduleSync();
+  loadMaterialList();
+}
+
+async function loadMaterialList() {
+  const list = await getMateriales();
+  const q = ((document.getElementById('search-material') || {}).value || '').toLowerCase().trim();
+  let filtered = list;
+  if (q) {
+    filtered = list.filter(m =>
+      (m.nombre || '').toLowerCase().includes(q) ||
+      (m.categoria || '').toLowerCase().includes(q) ||
+      (m.referencia || '').toLowerCase().includes(q)
+    );
+  }
+  filtered.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+  const el = document.getElementById('material-list');
+  if (!el) return;
+  if (!filtered.length) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">🩹</div>No hay material registrado<br><button class="btn btn-primary mt-16" onclick="openMaterialForm()">Añadir material</button></div>';
+    return;
+  }
+  let html = '';
+  for (const m of filtered) {
+    const stock = await getStockMaterial(m.id);
+    const min = m.stockMinimo || 0;
+    const bajo = min > 0 && stock < min;
+    html += `
+      <div class="card med-item" onclick="openMaterialForm(${m.id})">
+        <div class="med-photo placeholder">🩹</div>
+        <div class="med-info">
+          <div class="name">${escapeHtml(m.nombre)}</div>
+          <div class="principio">${escapeHtml(m.categoria || '')}${m.referencia ? ' · Ref. ' + escapeHtml(m.referencia) : ''}</div>
+          <div class="meta">
+            <span class="badge ${bajo ? 'badge-bajo' : 'badge-stock'}">${stock}${min > 0 ? '/' + min : ''} uds</span>
+            ${m.ubicacion ? ' · 📍 ' + escapeHtml(m.ubicacion) : ''}
+          </div>
+        </div>
+      </div>`;
+  }
+  el.innerHTML = html;
+}
+
+async function openMaterialMovimiento(tipo) {
+  document.getElementById('mat-mov-tipo').value = tipo;
+  document.getElementById('modal-mat-mov-title').textContent = tipo === 'entrada' ? 'Entrada de material' : 'Salida de material';
+  document.getElementById('form-mat-mov').reset();
+  document.getElementById('mat-mov-tipo').value = tipo;
+  document.getElementById('mat-mov-cantidad').value = '1';
+
+  const mats = await getMateriales();
+  mats.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+  const sel = document.getElementById('mat-mov-select');
+  sel.innerHTML = '<option value="">— Elige material —</option>' +
+    mats.map(m => `<option value="${m.id}">${escapeHtml(m.nombre)}</option>`).join('');
+
+  const motivo = document.getElementById('mat-mov-motivo');
+  if (tipo === 'entrada') {
+    motivo.innerHTML = ['Recepción / compra', 'Devolución', 'Ajuste inventario', 'Otro']
+      .map(m => `<option value="${m}">${m}</option>`).join('');
+    document.getElementById('mat-mov-lote-group').style.display = 'block';
+    document.getElementById('mat-mov-cad-group').style.display = 'block';
+    document.getElementById('mat-mov-lotes-exist-group').style.display = 'none';
+  } else {
+    motivo.innerHTML = ['Uso', 'Caducado', 'Rotura / deterioro', 'Ajuste inventario', 'Otro']
+      .map(m => `<option value="${m}">${m}</option>`).join('');
+    document.getElementById('mat-mov-lote-group').style.display = 'none';
+    document.getElementById('mat-mov-cad-group').style.display = 'none';
+    document.getElementById('mat-mov-lotes-exist-group').style.display = 'block';
+  }
+
+  sel.onchange = async () => {
+    if (tipo !== 'salida') return;
+    const mid = parseInt(sel.value);
+    const lotesSel = document.getElementById('mat-mov-lotes-select');
+    if (!mid) { lotesSel.innerHTML = ''; return; }
+    const lotes = (await getLotesMaterial(mid)).filter(l => (l.cantidad || 0) > 0);
+    lotesSel.innerHTML = lotes.length
+      ? lotes.map(l => `<option value="${l.id}">${escapeHtml(l.numeroLote || 'S/N')} · ${l.cantidad} uds${l.caducidad ? ' · cad. ' + l.caducidad : ''}</option>`).join('')
+      : '<option value="">Sin stock en lotes</option>';
+  };
+
+  const audit = document.getElementById('mat-mov-audit');
+  if (audit && currentUser) {
+    audit.textContent = `Quedará a nombre de ${currentUser.nombre} · fecha y hora`;
+  }
+  openModal('modal-mat-mov');
+}
+
+async function saveMaterialMovimiento(e) {
+  e.preventDefault();
+  const tipo = document.getElementById('mat-mov-tipo').value;
+  const materialId = parseInt(document.getElementById('mat-mov-select').value);
+  const cantidad = parseInt(document.getElementById('mat-mov-cantidad').value);
+  const motivo = document.getElementById('mat-mov-motivo').value;
+  const obs = (document.getElementById('mat-mov-obs').value || '').trim();
+
+  if (!materialId || !cantidad || cantidad < 1) {
+    showToast('Indica material y cantidad');
+    return;
+  }
+
+  let loteId = null;
+  if (tipo === 'entrada') {
+    const numeroLote = (document.getElementById('mat-mov-lote').value || '').trim() || 'S/N';
+    const caducidad = document.getElementById('mat-mov-caducidad').value || null;
+    loteId = await addLoteMaterial({
+      materialId,
+      numeroLote,
+      caducidad,
+      cantidad,
+      createdAt: new Date().toISOString()
+    });
+  } else {
+    loteId = parseInt(document.getElementById('mat-mov-lotes-select').value);
+    if (!loteId) {
+      showToast('Selecciona un lote con stock');
+      return;
+    }
+    const lotes = await getLotesMaterial(materialId);
+    const lote = lotes.find(l => l.id === loteId);
+    if (!lote || lote.cantidad < cantidad) {
+      showToast('Stock insuficiente en el lote');
+      return;
+    }
+    lote.cantidad -= cantidad;
+    await updateLoteMaterial(lote);
+  }
+
+  await addMovimientoMaterial({
+    materialId,
+    loteId,
+    tipo,
+    cantidad,
+    motivo,
+    observaciones: obs || null,
+    usuario: currentUser.nombre,
+    username: currentUser.username,
+    usuarioId: currentUser.id,
+    fecha: new Date().toISOString()
+  });
+
+  showToast(tipo === 'entrada' ? 'Entrada de material registrada' : 'Salida de material registrada');
+  closeModal('modal-mat-mov');
+  scheduleSync();
+  loadMaterialList();
+  loadMaterialMovimientos();
+}
+
+async function loadMaterialMovimientos() {
+  const el = document.getElementById('material-mov-list');
+  if (!el) return;
+  const movs = await getAllMovimientosMaterial();
+  const mats = await getMateriales();
+  const byId = Object.fromEntries(mats.map(m => [m.id, m]));
+  movs.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+  const top = movs.slice(0, 30);
+  if (!top.length) {
+    el.innerHTML = '<p class="text-sm text-muted">Sin movimientos de material aún</p>';
+    return;
+  }
+  el.innerHTML = top.map(m => {
+    const mat = byId[m.materialId];
+    const nombre = mat ? mat.nombre : 'Material #' + m.materialId;
+    return `<div class="card mov-card ${m.tipo}">
+      <div class="mov-tipo ${m.tipo}">${m.tipo === 'entrada' ? '＋ ENTRADA' : '－ SALIDA'} · ${m.cantidad} uds</div>
+      <div class="name">${escapeHtml(nombre)}</div>
+      <div class="mov-audit">👤 ${escapeHtml(m.usuario || m.username || '—')} · 🕒 ${formatDate(m.fecha)}</div>
+      <div class="mov-audit">📋 ${escapeHtml(m.motivo || '—')}${m.observaciones ? ' · ' + escapeHtml(m.observaciones) : ''}</div>
+    </div>`;
+  }).join('');
+}
