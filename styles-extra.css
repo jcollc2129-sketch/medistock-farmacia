@@ -1,0 +1,8 @@
+/* Auditoría y cargo */
+.mov-audit { font-size: 0.8rem; color: #0f766e; margin-top: 2px; line-height: 1.35; }
+.mov-card.salida { border-left: 4px solid #dc2626; }
+.mov-card.entrada { border-left: 4px solid #16a34a; }
+.mov-card { margin-bottom: 10px; padding: 12px 14px; }
+.badge-cargo { background: #ccfbf1; color: #0f766e; }
+.badge-no-cargo { background: #fef3c7; color: #b45309; }
+.bottom-nav .nav-item { font-size: 0.65rem; }
