@@ -2,22 +2,20 @@
 
 PWA offline para control de entradas y salidas de medicamentos.
 
-## Demo en vivo
-https://medistock-f1a.pages.dev/
+## Demo
+- Cloudflare: https://medistock-f1a.pages.dev/
+- Repo: https://github.com/jcollc2129-sketch/medistock-farmacia
 
-## Acceso demo
-- **admin** / `admin123`
-- **operario** / `operario123`
+## Acceso
+- admin / admin123
+- operario / operario123
 
-## Novedades (dotacion minima)
-- Campos: dosis, presentacion, grupo terapeutico, stock minimo, nombre comercial opcional
-- Catalogo de dotacion minima (~120 items)
-- Alertas de stock bajo minimo + caducidad
-- Boton 📋 (admin) para cargar la dotacion
+## Version v11
+- Cargo vs No cargo (menu inferior)
+- Catalogos de dotacion y no cargo
+- Motivos salida: Uso / Caducado
+- Destinos: Consulta, carros, quirofanos, SVA, UCI
+- Auditoria: quien retira, fecha, hora, motivo, destino
 
-## Archivos clave
-- `index.html`, `app.js`, `db.js`, `dotacion.js`, `sync.js`, `styles.css`, `sw.js`
-
-## Colaboracion
-Clonar el repo, hacer cambios y push a `main`.
-Si Cloudflare Pages esta conectado al repo, el deploy es automatico.
+## Deploy
+Subir carpeta a Cloudflare Pages o conectar este repo a Pages (branch main).
