@@ -9,18 +9,15 @@ https://medistock-f1a.pages.dev/
 - **admin** / `admin123`
 - **operario** / `operario123`
 
-## Caracteristicas
-- Inventario (nombre comercial, principio activo, categoria, ubicacion, foto)
-- Entradas y salidas con lotes y caducidad
-- Codigo de barras y login por QR
-- Offline (IndexedDB)
-- Exportar / importar copia de seguridad
-- Multi-usuario con permisos
+## Novedades (dotacion minima)
+- Campos: dosis, presentacion, grupo terapeutico, stock minimo, nombre comercial opcional
+- Catalogo de dotacion minima (~120 items)
+- Alertas de stock bajo minimo + caducidad
+- Boton 📋 (admin) para cargar la dotacion
 
-## Despliegue
-Cloudflare Pages. Opcional: KV binding `MEDISTOCK_KV`.
+## Archivos clave
+- `index.html`, `app.js`, `db.js`, `dotacion.js`, `sync.js`, `styles.css`, `sw.js`
 
 ## Colaboracion
-1. Clonar el repo
-2. Hacer cambios
-3. Push a `main`
+Clonar el repo, hacer cambios y push a `main`.
+Si Cloudflare Pages esta conectado al repo, el deploy es automatico.
