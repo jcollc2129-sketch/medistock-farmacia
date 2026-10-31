@@ -5,6 +5,11 @@ let currentPhoto = null;
 let editingMedId = null;
 
 // ========== INIT ==========
+document.addEventListener('change', (e) => {
+  if (e.target && (e.target.id === 'mov-med-select' || e.target.id === 'mov-tipo' || e.target.id === 'mov-med-id')) {
+    updateMedicoField();
+  }
+});
 document.addEventListener('DOMContentLoaded', async () => {
   // Register Service Worker
   if ('serviceWorker' in navigator) {
@@ -29,6 +34,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const seed3 = await seedHospitalarioIfEmpty();
   if (seed3.seeded) {
     console.log('Hospitalario cargados:', seed3.count, 'medicamentos');
+  }
+  const seed4 = await seedEstupefacientesIfEmpty();
+  if (seed4.seeded) {
+    console.log('Estupefacientes cargados:', seed4.count);
   }
   checkSession();
 });
@@ -280,6 +289,7 @@ async function loadInventario(filter = '') {
             <span class="badge ${catBadge}">${catLabel}</span>
             <span class="badge ${stockBadge}">${stock}${min > 0 ? '/' + min : ''} uds</span>
             <span class="badge ${m.tipoStock === 'no_cargo' ? 'badge-no-cargo' : (m.tipoStock === 'hospitalario' ? 'badge-hosp' : 'badge-cargo')}">${m.tipoStock === 'no_cargo' ? 'No cargo' : (m.tipoStock === 'hospitalario' ? 'Hospitalario' : 'Cargo')}</span>
+            ${m.esEstupefaciente ? '<span class="badge badge-estup">⚠️ Estupefaciente</span>' : ''}
             ${m.ubicacion ? ` · 📍 ${escapeHtml(m.ubicacion)}` : ''}
           </div>
         </div>
@@ -415,6 +425,8 @@ async function openEditarMed() {
   document.getElementById('med-stock-minimo').value = med.stockMinimo != null ? med.stockMinimo : 0;
   const ts = document.getElementById('med-tipo-stock');
   if (ts) ts.value = med.tipoStock || 'cargo';
+  const est = document.getElementById('med-estupefaciente');
+  if (est) est.checked = !!med.esEstupefaciente;
   document.getElementById('med-categoria').value = med.categoria || 'comprimidos';
   document.getElementById('med-ubicacion').value = med.ubicacion || '';
   document.getElementById('med-notas').value = med.notas || '';
@@ -446,6 +458,7 @@ async function saveMedicamento(e) {
   const grupo = document.getElementById('med-grupo').value.trim();
   const stockMinimo = parseInt(document.getElementById('med-stock-minimo').value) || 0;
   const tipoStock = (document.getElementById('med-tipo-stock') || {}).value || 'cargo';
+  const esEstupefaciente = !!(document.getElementById('med-estupefaciente') || {}).checked;
   const categoria = document.getElementById('med-categoria').value;
   const ubicacion = document.getElementById('med-ubicacion').value.trim();
   const notas = document.getElementById('med-notas').value.trim();
@@ -473,6 +486,7 @@ async function saveMedicamento(e) {
     grupoTerapeutico: grupo,
     stockMinimo,
     tipoStock,
+    esEstupefaciente,
     categoria,
     ubicacion,
     notas,
@@ -603,6 +617,7 @@ async function lookupBarcodeForMov(barcode) {
     document.getElementById('mov-med-id').value = med.id;
     document.getElementById('mov-med-nombre').textContent = med.nombreComercial;
     document.getElementById('mov-med-info').style.display = 'block';
+    updateMedicoField();
     const select = document.getElementById('mov-med-select');
     if (select) select.value = med.id;
     if (nuevoMedGroup) nuevoMedGroup.style.display = 'none';
@@ -694,6 +709,7 @@ function fillMotivos(tipo) {
       ? `Control: la retirada quedará a nombre de ${currentUser.nombre} (@${currentUser.username}) con fecha y hora.`
       : `Quedará registrado: ${currentUser.nombre} · fecha y hora del movimiento.`;
   }
+  updateMedicoField();
 }
 
 async function openMovimiento(tipo) {
@@ -751,6 +767,7 @@ async function onMedSelectChange(medId) {
     document.getElementById('mov-med-id').value = med.id;
     document.getElementById('mov-med-nombre').textContent = med.nombreComercial;
     document.getElementById('mov-med-info').style.display = 'block';
+    updateMedicoField();
     document.getElementById('mov-barcode').value = med.barcode || '';
     nuevoMedGroup.style.display = 'none'; // Ya existe, ocultar creación
     loadLotesForMov(med.id);
@@ -806,6 +823,18 @@ async function saveMovimiento(e) {
       return;
     }
     if (motivo === 'Caducado') destino = 'Caducado / baja';
+  }
+  let medicoSolicitante = '';
+  if (tipo === 'salida') {
+    let medCheck = null;
+    try { medCheck = await getMedicamentoById(Number(medId)); } catch (e) {}
+    if (medCheck && medCheck.esEstupefaciente) {
+      medicoSolicitante = ((document.getElementById('mov-medico') || {}).value || '').trim();
+      if (!medicoSolicitante) {
+        showToast('⚠️ Estupefaciente: indica el nombre del médico solicitante');
+        return;
+      }
+    }
   }
   const loteId = document.getElementById('mov-lotes-select').value;
   const nuevoLote = document.getElementById('mov-nuevo-lote').value.trim();
@@ -896,6 +925,7 @@ async function saveMovimiento(e) {
     cantidad,
     motivo,
     destino: destino || null,
+    medicoSolicitante: medicoSolicitante || null,
     observaciones: (observaciones || '').trim() || null,
     usuario: currentUser.nombre,
     username: currentUser.username,
@@ -1135,6 +1165,7 @@ function renderMovAudit(m) {
   if (m.tipo === 'salida') {
     let extra = '';
     if (m.destino) extra += `<div class="mov-audit">📍 Destino: <strong>${escapeHtml(m.destino)}</strong></div>`;
+    if (m.medicoSolicitante) extra += `<div class="mov-audit" style="color:#9f1239">⚠️ Médico solicitante: <strong>${escapeHtml(m.medicoSolicitante)}</strong></div>`;
     if (m.observaciones) extra += `<div class="mov-audit">📝 ${escapeHtml(m.observaciones)}</div>`;
     return `<div class="mov-audit">👤 Retirado por: <strong>${escapeHtml(quien)}</strong>${escapeHtml(userTag)} · 🕒 ${cuando}</div>
             <div class="mov-audit">📋 Motivo: <strong>${escapeHtml(m.motivo || '—')}</strong></div>
@@ -1219,7 +1250,8 @@ async function cargarDotacion() {
   const n = await importarDotacionFaltante();
   const n2 = await importarNoCargoFaltante();
   const n3 = await importarHospitalarioFaltante();
-  showToast(`Catálogos: +${n} cargo, +${n2} no cargo, +${n3} hospitalario`);
+  const n4 = await importarEstupefacientesFaltante();
+  showToast(`Catálogos: +${n} cargo, +${n2} no cargo, +${n3} hosp., +${n4} estupef.`);
   scheduleSync();
   loadInventario();
   loadDashboard();
@@ -1291,6 +1323,7 @@ async function loadCargoList() {
           <div class="meta">
             <span class="badge ${bajo ? 'badge-bajo' : 'badge-stock'}">${stock}${min > 0 ? '/' + min : ''} uds</span>
             <span class="badge ${m.tipoStock === 'no_cargo' ? 'badge-no-cargo' : (m.tipoStock === 'hospitalario' ? 'badge-hosp' : 'badge-cargo')}">${m.tipoStock === 'no_cargo' ? 'No cargo' : (m.tipoStock === 'hospitalario' ? 'Hospitalario' : 'Cargo')}</span>
+            ${m.esEstupefaciente ? '<span class="badge badge-estup">⚠️ Estupefaciente</span>' : ''}
           </div>
         </div>
       </div>`;
@@ -1311,9 +1344,33 @@ async function cargarCatalogos() {
   const n1 = await importarDotacionFaltante();
   const n2 = await importarNoCargoFaltante();
   const n3 = await importarHospitalarioFaltante();
-  showToast(`Añadidos: ${n1} cargo, ${n2} no cargo, ${n3} hospitalario`);
+  const n4 = await importarEstupefacientesFaltante();
+  showToast(`Añadidos: ${n1} cargo, ${n2} no cargo, ${n3} hosp., ${n4} estupef.`);
   scheduleSync();
   loadCargoList();
   loadInventario();
   loadDashboard();
+}
+
+
+async function updateMedicoField() {
+  const group = document.getElementById('mov-medico-group');
+  const input = document.getElementById('mov-medico');
+  if (!group) return;
+  const tipo = (document.getElementById('mov-tipo') || {}).value || 'salida';
+  const medId = (document.getElementById('mov-med-id') || {}).value
+    || (document.getElementById('mov-med-select') || {}).value;
+  let esEst = false;
+  if (tipo === 'salida' && medId) {
+    try {
+      const med = await getMedicamentoById(Number(medId) || medId);
+      esEst = !!(med && med.esEstupefaciente);
+    } catch (e) {}
+  }
+  group.style.display = esEst ? 'block' : 'none';
+  if (!esEst && input) input.value = '';
+  if (esEst) {
+    const hint = document.getElementById('mov-audit-hint');
+    if (hint) hint.textContent = '⚠️ ESTUPEFACIENTE: indica el médico solicitante. Quedará registrado quién retira y el médico.';
+  }
 }

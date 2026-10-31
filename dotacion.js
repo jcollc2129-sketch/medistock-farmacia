@@ -472,6 +472,22 @@ async function seedNoCargoIfEmpty() {
   return { seeded: n > 0, count: n };
 }
 
+
+// ESTUPEFACIENTES (requieren médico solicitante en salidas)
+const DOTACION_ESTUPEFACIENTES = [
+  { nombreComercial: "Fentanilo trasmucosal con aplicador bucal 200mcg", presentacion: "Caja 3 Comp.", stockMinimo: 0, categoria: "comprimidos" },
+  { nombreComercial: "Fentanilo, FENTANEST®", presentacion: "Caja 5 Amp.", stockMinimo: 0, categoria: "ampollas" },
+  { nombreComercial: "Meperidina, Dolantina® 50 mg / ml", presentacion: "Caja 10 Amp.", stockMinimo: 0, categoria: "ampollas" },
+  { nombreComercial: "Morfina BRAUN® 10 mg / ml", presentacion: "Caja 10 Amp.", stockMinimo: 0, categoria: "ampollas" },
+  { nombreComercial: "Remifentanilo, ULTIVA 2 mg POLVO PARA CONCENTRADO PARA SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN", presentacion: "Caja 5 viales", stockMinimo: 0, categoria: "vial" },
+  { nombreComercial: "Remifentanilo, ULTIVA 5 mg POLVO PARA CONCENTRADO PARA SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN", presentacion: "Caja 5 viales", stockMinimo: 0, categoria: "vial" },
+  { nombreComercial: "Tramadol + paracetamol 37,5 mg/ 325 mg ZALDIAR®", presentacion: "Caja 20 Comp.", stockMinimo: 0, categoria: "comprimidos" },
+  { nombreComercial: "Tramadol 100 mg / 2 ml, ADOLONTA®", presentacion: "Caja 5 Amp.", stockMinimo: 0, categoria: "ampollas" },
+  { nombreComercial: "Tramadol Hidrocloruro 50 mg, ADOLONTA®", presentacion: "Caja 20 Comp.", stockMinimo: 0, categoria: "comprimidos" },
+  { nombreComercial: "Fentanilo trasmucosal con aplicador bucal 600mcg", presentacion: "Caja 15 Comp.", stockMinimo: 0, categoria: "comprimidos" },
+  { nombreComercial: "Tramadol hidrocloruro, Dexketoprofeno 75 mg / 25 mg ENANPLUS®", presentacion: "Caja 20 Comp.", stockMinimo: 0, categoria: "comprimidos" },
+];
+
 async function importarHospitalarioFaltante() {
   const meds = await getMedicamentos();
   const key = (m) => (m.nombreComercial || "").toLowerCase().trim();
@@ -507,5 +523,53 @@ async function seedHospitalarioIfEmpty() {
   const meds = await getMedicamentos();
   if (meds.some(m => m.tipoStock === "hospitalario")) return { seeded: false, count: 0 };
   const n = await importarHospitalarioFaltante();
+  return { seeded: n > 0, count: n };
+}
+
+async function importarEstupefacientesFaltante() {
+  const meds = await getMedicamentos();
+  const key = (m) => (m.nombreComercial || "").toLowerCase().trim();
+  const existing = new Set(meds.map(key));
+  let added = 0;
+  for (const d of DOTACION_ESTUPEFACIENTES) {
+    const k = (d.nombreComercial || "").toLowerCase().trim();
+    if (existing.has(k)) {
+      // marcar como estupefaciente si ya existe
+      const med = meds.find(m => key(m) === k);
+      if (med && !med.esEstupefaciente) {
+        med.esEstupefaciente = true;
+        med.updatedAt = new Date().toISOString();
+        await updateMedicamento(med);
+      }
+      continue;
+    }
+    await addMedicamento({
+      barcode: null,
+      nombreComercial: d.nombreComercial,
+      principioActivo: d.nombreComercial.split(",")[0].trim(),
+      dosis: "",
+      presentacion: d.presentacion || "",
+      grupoTerapeutico: "Estupefaciente",
+      categoria: d.categoria || "otros",
+      stockMinimo: d.stockMinimo || 0,
+      ubicacion: "",
+      notas: "Estupefaciente — requiere médico solicitante en salidas",
+      foto: null,
+      esDotacion: false,
+      tipoStock: "no_cargo",
+      esEstupefaciente: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    existing.add(k);
+    added++;
+  }
+  return added;
+}
+
+async function seedEstupefacientesIfEmpty() {
+  const meds = await getMedicamentos();
+  if (meds.some(m => m.esEstupefaciente)) return { seeded: false, count: 0 };
+  const n = await importarEstupefacientesFaltante();
   return { seeded: n > 0, count: n };
 }

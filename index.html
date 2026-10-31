@@ -299,6 +299,13 @@
           </select>
         </div>
 
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="med-estupefaciente" style="width:auto">
+            ⚠️ Estupefaciente (exige médico en salidas)
+          </label>
+        </div>
+
         <div class="form-row">
           <div class="form-group">
             <label>Tipo / Categoría</label>
@@ -466,6 +473,12 @@
         <div class="form-group" id="mov-destino-otro-group" style="display:none">
           <label>Especificar destino</label>
           <input type="text" id="mov-destino-otro" placeholder="Indica el destino...">
+        </div>
+
+        <div class="form-group" id="mov-medico-group" style="display:none">
+          <label>⚠️ Médico solicitante (estupefaciente) *</label>
+          <input type="text" id="mov-medico" placeholder="Nombre y apellidos del médico">
+          <p class="text-sm text-muted" style="margin-top:4px">Obligatorio al retirar estupefacientes</p>
         </div>
 
         <div class="form-group">
