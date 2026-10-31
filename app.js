@@ -39,6 +39,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (seed4.seeded) {
     console.log('Estupefacientes cargados:', seed4.count);
   }
+  // Siempre intentar completar catálogos (solo añade los que faltan)
+  try {
+    if (typeof importarHospitalarioFaltante === 'function') {
+      const h = await importarHospitalarioFaltante();
+      if (h > 0) console.log('Hospitalario extra:', h);
+    }
+    if (typeof importarEstupefacientesFaltante === 'function') {
+      const e = await importarEstupefacientesFaltante();
+      if (e > 0) console.log('Estupefacientes extra:', e);
+    }
+  } catch (err) { console.warn(err); }
   checkSession();
 });
 

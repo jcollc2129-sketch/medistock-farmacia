@@ -465,9 +465,6 @@ async function importarNoCargoFaltante() {
 }
 
 async function seedNoCargoIfEmpty() {
-  const meds = await getMedicamentos();
-  const hasNoCargo = meds.some(m => m.tipoStock === "no_cargo");
-  if (hasNoCargo) return { seeded: false, count: 0 };
   const n = await importarNoCargoFaltante();
   return { seeded: n > 0, count: n };
 }
@@ -520,8 +517,6 @@ async function importarHospitalarioFaltante() {
 }
 
 async function seedHospitalarioIfEmpty() {
-  const meds = await getMedicamentos();
-  if (meds.some(m => m.tipoStock === "hospitalario")) return { seeded: false, count: 0 };
   const n = await importarHospitalarioFaltante();
   return { seeded: n > 0, count: n };
 }
@@ -568,8 +563,6 @@ async function importarEstupefacientesFaltante() {
 }
 
 async function seedEstupefacientesIfEmpty() {
-  const meds = await getMedicamentos();
-  if (meds.some(m => m.esEstupefaciente)) return { seeded: false, count: 0 };
   const n = await importarEstupefacientesFaltante();
   return { seeded: n > 0, count: n };
 }
