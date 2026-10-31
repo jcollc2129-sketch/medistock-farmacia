@@ -109,7 +109,23 @@
     <!-- MOVIMIENTOS -->
     <div id="screen-movimientos" class="screen">
       <h3 class="section-title">📋 Historial de movimientos</h3>
+      <p class="text-sm text-muted" style="margin:-8px 0 12px;">Registro de control: quién retira o registra, fecha, hora y motivo</p>
       <div id="movimientos-list"></div>
+    </div>
+
+    <!-- CARGO / NO CARGO -->
+    <div id="screen-cargo" class="screen">
+      <div class="flex gap-8 mb-8" style="padding:0 4px">
+        <button class="btn btn-sm btn-primary" id="btn-filtro-cargo" onclick="setFiltroCargo('cargo')" style="flex:1">📦 Cargo</button>
+        <button class="btn btn-sm btn-secondary" id="btn-filtro-no-cargo" onclick="setFiltroCargo('no_cargo')" style="flex:1">📋 No cargo</button>
+        <button class="btn btn-sm btn-secondary" id="btn-filtro-todos" onclick="setFiltroCargo('todos')" style="flex:1">Todos</button>
+      </div>
+      <p class="text-sm text-muted" id="cargo-hint" style="margin:-4px 0 12px">Medicamentos de dotación (cargo) vs no cargo — pedidos por separado</p>
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="search" id="search-cargo" placeholder="Buscar en este listado..." oninput="filterCargoList()">
+      </div>
+      <div id="cargo-list"></div>
     </div>
 
     <!-- USUARIOS (solo admin) -->
@@ -138,6 +154,10 @@
       <button class="nav-item" data-screen="movimientos" onclick="navigate('movimientos')">
         <span class="icon">📋</span>
         <span>Historial</span>
+      </button>
+      <button class="nav-item" data-screen="cargo" onclick="navigate('cargo')">
+        <span class="icon">📦</span>
+        <span>Cargo</span>
       </button>
       <button class="nav-item" data-screen="usuarios" onclick="navigate('usuarios')">
         <span class="icon">👥</span>
@@ -201,6 +221,10 @@
           <div id="detalle-stock-minimo">—</div>
         </div>
       </div>
+      <div class="form-group">
+        <label>Tipo de stock</label>
+        <div id="detalle-tipo-stock">—</div>
+      </div>
 
       <div class="flex gap-8 mt-12">
         <button class="btn btn-success" style="flex:1" onclick="fromDetalleEntrada()">➕ Entrada</button>
@@ -263,6 +287,14 @@
             <label>Stock mínimo</label>
             <input type="number" id="med-stock-minimo" min="0" step="1" placeholder="0" value="0">
           </div>
+        </div>
+
+        <div class="form-group">
+          <label>Tipo de stock *</label>
+          <select id="med-tipo-stock">
+            <option value="cargo">Cargo (dotación mínima)</option>
+            <option value="no_cargo">No cargo (pedido aparte)</option>
+          </select>
         </div>
 
         <div class="form-row">
@@ -405,17 +437,43 @@
         </div>
 
         <div class="form-group">
-          <label>Motivo</label>
-          <select id="mov-motivo">
-            <option value="Compra">Compra</option>
-            <option value="Venta">Venta</option>
-            <option value="Devolución">Devolución</option>
-            <option value="Caducado">Caducado</option>
-            <option value="Rotura">Rotura</option>
-            <option value="Ajuste">Ajuste de inventario</option>
-            <option value="Otro">Otro</option>
+          <label id="mov-motivo-label">Motivo *</label>
+          <select id="mov-motivo" required></select>
+        </div>
+
+        <div class="form-group" id="mov-motivo-otro-group" style="display:none">
+          <label>Especificar motivo</label>
+          <input type="text" id="mov-motivo-otro" placeholder="Describe el motivo...">
+        </div>
+
+        <div class="form-group" id="mov-destino-group" style="display:none">
+          <label>Destino *</label>
+          <select id="mov-destino">
+            <option value="">— Elige destino —</option>
+            <option value="Consulta">Consulta</option>
+            <option value="Carro de parada triaje">Carro de parada triaje</option>
+            <option value="Carro de parada UCI">Carro de parada UCI</option>
+            <option value="Quirófano 1">Quirófano 1</option>
+            <option value="Quirófano 2">Quirófano 2</option>
+            <option value="Mochilas SVA">Mochilas SVA</option>
+            <option value="UCI">UCI</option>
+            <option value="Otro destino">Otro destino</option>
           </select>
         </div>
+
+        <div class="form-group" id="mov-destino-otro-group" style="display:none">
+          <label>Especificar destino</label>
+          <input type="text" id="mov-destino-otro" placeholder="Indica el destino...">
+        </div>
+
+        <div class="form-group">
+          <label>Observaciones</label>
+          <input type="text" id="mov-observaciones" placeholder="Opcional: nota adicional...">
+        </div>
+
+        <p class="text-sm text-muted" id="mov-audit-hint" style="margin-bottom:12px;">
+          Quedará registrado quién realiza el movimiento, con fecha y hora.
+        </p>
 
         <button type="submit" class="btn btn-primary w-full mt-16">Registrar movimiento</button>
       </form>

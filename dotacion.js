@@ -133,6 +133,140 @@ const DOTACION_MINIMA = [
   { grupo: "DERMATOLÓGICOS", principioActivo: "Vitamina A+D", dosis: "", categoria: "crema", presentacion: "Tubo 30 gr.", stockMinimo: 16 }
 ];
 
+
+// Medicamentos de NO CARGO (control de pedidos por separado)
+const DOTACION_NO_CARGO = [
+  { nombreComercial: "Acetilcisteína, FLUMIL 100 MG/ML SOLUCION INYECTABLE", presentacion: "Caja 5 Ampollas", stockMinimo: 0 },
+  { nombreComercial: "Ácido Acetilsalicílico 100 mg, ADIRO® 100", presentacion: "Caja 30 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Ácido Tranexámico AMCHAFIBRIN 500mg", presentacion: "Caja 30 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Aftajventud® colutorio", presentacion: "Frasco 30 ml", stockMinimo: 0 },
+  { nombreComercial: "Albendazol 400 mg, ESKAZOLE®", presentacion: "Caja 6 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Aleudrina 0,2 mg / ml ISOPROTERENOL® (FRIO)", presentacion: "Caja 60 ampollas", stockMinimo: 0 },
+  { nombreComercial: "Alopurinol 100 mg", presentacion: "Caja 25 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Alopurinol 300 mg", presentacion: "Caja 30 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Alprazolam 0,5 mg, TRANKIMAZIN®", presentacion: "Caja 30 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Ampicilina 1g, GOBEMICINA", presentacion: "Vial", stockMinimo: 0 },
+  { nombreComercial: "Atenolol 50 mg", presentacion: "Caja 30 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Atorvastatina 10 mg", presentacion: "Caja 28 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Betahistina, SERC® 16 mg", presentacion: "Caja 30 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Betametasona inyectable, celestone", presentacion: "3 Viales", stockMinimo: 0 },
+  { nombreComercial: "Bisoprolol cor sandoz EFG 5 mg", presentacion: "Caja 60 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Blastoestimulina Pom.", presentacion: "Tubo 30 g", stockMinimo: 0 },
+  { nombreComercial: "Blastoestimulina óvulos vaginales", presentacion: "Caja 10 óvulos", stockMinimo: 0 },
+  { nombreComercial: "Bromazepam 1,5 mg, LEXATIN®", presentacion: "Caja 30 Caps.", stockMinimo: 0 },
+  { nombreComercial: "Bromuro de ipatropio 250 mcg / 2ml ATROVENT", presentacion: "Caja Monodosis", stockMinimo: 0 },
+  { nombreComercial: "Budesonida ALDO-UNION® 0,25 mcg / ml suspensión para inhalación por nebulizador", presentacion: "Caja 20 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Budesonida ALDO UNION 0.5 mcg/ml suspensión para inhalación por nebulizador", presentacion: "Caja 20 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Carvedilol 25 mg, COROPRES®", presentacion: "Caja 28 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Cefazolina 1 g NORMON® INTRAVENOSA", presentacion: "Vial", stockMinimo: 0 },
+  { nombreComercial: "Ceftriaxona 1000 mg NORMON® INTRAVENOSA", presentacion: "Vial", stockMinimo: 0 },
+  { nombreComercial: "Cefuroxima 500 mg", presentacion: "Caja 20 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Ciclobenzaprina 10 mg Yurelax®", presentacion: "Caja 30 cap.", stockMinimo: 0 },
+  { nombreComercial: "Cinarizina, STUGERON® cápsulas", presentacion: "Caja 30 cap.", stockMinimo: 0 },
+  { nombreComercial: "Ciprofloxacino 1 mg gotas óticas, QUALIGEN", presentacion: "Caja 20 Env.", stockMinimo: 0 },
+  { nombreComercial: "Ciprofloxacino 3 mg / ml colirio OFTACILOX®", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Claritromicina 500 mg", presentacion: "Caja 21 comp.", stockMinimo: 0 },
+  { nombreComercial: "Clindamicina 300 mg / 2 ml", presentacion: "Vial", stockMinimo: 0 },
+  { nombreComercial: "Clopidogrel 75 mg, PLAVIX®", presentacion: "Caja 28 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Cloracepato dipotasico 20 mg, TRANXILIUM®", presentacion: "Vial", stockMinimo: 0 },
+  { nombreComercial: "Clorhexidina jabonosa 40mg/ml 400 ml HIBISCRUB", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Clorhexidina solución acuosa 2% 250 ml", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Clorhexidina solución alcohólica 2% 250 ml", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Cloruro de calcio 100mg/mL, BRAUN", presentacion: "Ampollas", stockMinimo: 0 },
+  { nombreComercial: "Clotrimazol Polvo 10 mg / g CANESTEN® polvo cutáneo", presentacion: "1 frasco", stockMinimo: 0 },
+  { nombreComercial: "Colchicina SEID® 1 mg", presentacion: "Caja 40 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Combiprasal® 0,5 mg / 2,5 mg", presentacion: "Caja 20 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Crema fotoprotectora FPS 50", presentacion: "Tubo", stockMinimo: 0 },
+  { nombreComercial: "Desloratadina 5 mg Bucodispersables, AERIUS®", presentacion: "Caja 20 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Dexametasona, Fortecortin® 4 mg", presentacion: "Caja 30comp", stockMinimo: 0 },
+  { nombreComercial: "Dexametasona, Fortecortin® 4 mg / ml", presentacion: "Caja 3 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Dexclorfeniramina, POLARAMINE® 5 mg / ml", presentacion: "Caja 5 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Dexketoprofeno, ENANTYUM® 25 mg", presentacion: "Caja 20 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Dexketoprofeno, ENANTYUM® 50 mg / 2 ml", presentacion: "Caja 6 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Doxilamina DORMIDINA 25 mg", presentacion: "Caja", stockMinimo: 0 },
+  { nombreComercial: "Ebastina + Pseudoefedrina Hidrocloruro 10 mg / 120 mg RINO-EBASTEL®", presentacion: "Caja 7 Caps.", stockMinimo: 0 },
+  { nombreComercial: "Ebastina 20 mg, EBASTEL FORTE®", presentacion: "Caja 20 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Enalapril 20 mg", presentacion: "Caja 28 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Enema Casen", presentacion: "Frasco", stockMinimo: 0 },
+  { nombreComercial: "Enoxaparina 100 mg, CLEXANE 10000 UI", presentacion: "10 jeringas precargadas", stockMinimo: 0 },
+  { nombreComercial: "Enoxaparina 60 mg, CLEXANE 6000 UI", presentacion: "10 jeringas precargadas", stockMinimo: 0 },
+  { nombreComercial: "Enoxaparina 80 mg, CLEXANE 8000 UI", presentacion: "10 jeringas precargadas", stockMinimo: 0 },
+  { nombreComercial: "Epistaxol® sol. cutánea", presentacion: "Frasco 10 ml", stockMinimo: 0 },
+  { nombreComercial: "Eritromicina 500 mg", presentacion: "Caja 30 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Fondaparinux sodico, ARIXTRA 2,5 MG/0,5 ML SOLUCION INYECTABLE", presentacion: "10 Jeringas precargadas", stockMinimo: 0 },
+  { nombreComercial: "Fosfomicina 3g", presentacion: "Caja 2 sobres", stockMinimo: 0 },
+  { nombreComercial: "Gelatina tanato, TANAGEL 250 mg", presentacion: "20 sobres", stockMinimo: 0 },
+  { nombreComercial: "Gentadexa COLIRCUSI®", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Getamicina Oftalmica", presentacion: "Tubo 3 gr.", stockMinimo: 0 },
+  { nombreComercial: "Glucagen kit, glucagon (NEVERA)", presentacion: "Jeringa precarg.", stockMinimo: 0 },
+  { nombreComercial: "Hemicraneal®", presentacion: "Caja 20 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Heparina sódica 25.000 UI (5000 UI / ml)", presentacion: "Vial", stockMinimo: 0 },
+  { nombreComercial: "Heparina sódica 5.000 UI (1000 UI / ml)", presentacion: "Vial", stockMinimo: 0 },
+  { nombreComercial: "Ibuprofeno Arginina ESPIDIFEN 600 mg Sobres granulados", presentacion: "Caja Sobres.", stockMinimo: 0 },
+  { nombreComercial: "Iruxol Mono", presentacion: "Tubo 30 g", stockMinimo: 0 },
+  { nombreComercial: "Iruxol Neo", presentacion: "Tubo 30 g", stockMinimo: 0 },
+  { nombreComercial: "Konakion 10mg/ml sol. iny", presentacion: "Caja", stockMinimo: 0 },
+  { nombreComercial: "Lagrimas artificiales, VISCOFRESH unidosis", presentacion: "Caja 30 env.", stockMinimo: 0 },
+  { nombreComercial: "LEVETIRACETAM NORMON 100 MG/ML SOLUCION ORAL EFG", presentacion: "Frasco", stockMinimo: 0 },
+  { nombreComercial: "Levofloxacino 500 mg", presentacion: "Caja 14 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Levomepromazina 25 mg SINOGAN®", presentacion: "Caja 20 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Lidocaina 50 mg/ml sol. Inyectable", presentacion: "Ampollas", stockMinimo: 0 },
+  { nombreComercial: "Linimento analgésico RADIOSALIL", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Lormetazepam, NOCTAMID® 2 mg", presentacion: "Caja 20 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Manitol 2%, 250 ml", presentacion: "Frasco", stockMinimo: 0 },
+  { nombreComercial: "Metilprednisolona SOLU-MODERIN 125 MG", presentacion: "Caja 3 viales", stockMinimo: 0 },
+  { nombreComercial: "Metilprednisolona URBASON 250 mg", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Metocarbamol, paracetamol, ROBAXISAL®", presentacion: "Caja 50 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Miconazol, DAKTARIN® gel oral", presentacion: "Tubo 40 g", stockMinimo: 0 },
+  { nombreComercial: "Naloxona 0,4 mg / ml", presentacion: "Caja 10 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Naproxeno 500 mg", presentacion: "Caja 40 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Neo-Huber gotas óticas", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Neostigmina 0,5 mg / ml", presentacion: "Caja 10 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Nistatina 100000 UI/ml MYCOSTATIN®", presentacion: "Frasco 60 ml", stockMinimo: 0 },
+  { nombreComercial: "Nitrofural 2mg/g, FURACIN", presentacion: "Pomada 100 g", stockMinimo: 0 },
+  { nombreComercial: "Nitroglicerina, NITRODERM TTS 10 mg/24h", presentacion: "30 parches", stockMinimo: 0 },
+  { nombreComercial: "Nobecutan aerosol 250 ml", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Ondansetrón 4 mg", presentacion: "Caja 15 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Oralsone® adultos", presentacion: "Caja 12 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Piridoxina 300 MG, BENADON®", presentacion: "Caja 6 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Plantaben polvos 3,5g", presentacion: "Caja 30 sobres", stockMinimo: 0 },
+  { nombreComercial: "Pregabalina 75 mg LYRICA®", presentacion: "Caja 56 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Propanolol 10 mg, SUMIAL®", presentacion: "Caja 50 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Recugel Gel Oftalmico (Hidratacion Ocular)", presentacion: "Tubo 10 Gr.", stockMinimo: 0 },
+  { nombreComercial: "Rhodogil 750.000 UI/125 mg comprimidos", presentacion: "Caja 30 uds", stockMinimo: 0 },
+  { nombreComercial: "RIMSTAR® comprimidos", presentacion: "Caja", stockMinimo: 0 },
+  { nombreComercial: "Salbutamol Sol. Inhalación SALBUAIR® 2,5 mg", presentacion: "Caja 60 Unidosis", stockMinimo: 0 },
+  { nombreComercial: "Sarcop crema", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Simeticona, AERORED 40 mg", presentacion: "Caja 30 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Solución alcohólica Sterillium 1 L con dosificador", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Suero fisiológico 0,9% 1 L tipo Versylene", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Suero fisiológico 0,9% 20 ml Unidosis", presentacion: "Caja", stockMinimo: 0 },
+  { nombreComercial: "Suero glucosado 10%, 500 ml", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Suero glucosado 5%, 250 ml", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Suero glucosado 5%, 100 ml", presentacion: "Frasco", stockMinimo: 0 },
+  { nombreComercial: "Sueroral CASEN®", presentacion: "Caja 5 sobres", stockMinimo: 0 },
+  { nombreComercial: "Sulpirida, DOGMATIL 50 mg", presentacion: "Caja 30 Caps.", stockMinimo: 0 },
+  { nombreComercial: "Sulpirida, DOGMATIL 50 mg / ml", presentacion: "Caja 12 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Talquistina polvo", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Taponoto Neo gotas", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Terracortril® pomada tópica", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Tiamina 100 mg, BENERVA®", presentacion: "Caja 6 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Ticagrelor 90 mg BRILIQUE", presentacion: "Caja 56 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Trigon depot 40 mg inyectable", presentacion: "Caja 3 amp", stockMinimo: 0 },
+  { nombreComercial: "Utabon Adultos", presentacion: "Frasco", stockMinimo: 0 },
+  { nombreComercial: "Vancomicina 500 mg", presentacion: "vial", stockMinimo: 0 },
+  { nombreComercial: "Varidasa ®", presentacion: "Caja 20 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Ventolin 5 mg/ml sol. Para inhalación", presentacion: "Frasco 10 ml", stockMinimo: 0 },
+  { nombreComercial: "Verapamilo, MANIDON®, 2,5 mg / ml", presentacion: "Caja 5 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Vispring 0,5 mg/ml", presentacion: "10 monodosis", stockMinimo: 0 },
+  { nombreComercial: "Zolpidem 10 mg", presentacion: "Caja 30 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Aposito Povidona Iodada, Betatul Apositos", presentacion: "Caja 10 sobres", stockMinimo: 0 },
+  { nombreComercial: "cloperastina jarabe 3,54mg/ml", presentacion: "Frasco", stockMinimo: 0 },
+  { nombreComercial: "azelastina hidrocloruro ALUON colirio 0,5mg/ml", presentacion: "unidad", stockMinimo: 0 },
+  { nombreComercial: "complejo vitaminico", presentacion: "unidad", stockMinimo: 0 },
+  { nombreComercial: "metilprednisolona ADVENTA pomada 1mg/ml", presentacion: "pomada", stockMinimo: 0 },
+];
+
 async function seedDotacionIfEmpty() {
   const meds = await getMedicamentos();
   if (meds.length > 0) return { seeded: false, count: 0 };
@@ -150,9 +284,10 @@ async function seedDotacionIfEmpty() {
       categoria: d.categoria || "otros",
       stockMinimo: d.stockMinimo || 0,
       ubicacion: "",
-      notas: "Dotación mínima",
+      notas: "Dotación mínima (cargo)",
       foto: null,
       esDotacion: true,
+      tipoStock: "cargo",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
@@ -180,9 +315,10 @@ async function importarDotacionFaltante() {
       categoria: d.categoria || "otros",
       stockMinimo: d.stockMinimo || 0,
       ubicacion: "",
-      notas: "Dotación mínima",
+      notas: "Dotación mínima (cargo)",
       foto: null,
       esDotacion: true,
+      tipoStock: "cargo",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
@@ -190,4 +326,43 @@ async function importarDotacionFaltante() {
     added++;
   }
   return added;
+}
+
+async function importarNoCargoFaltante() {
+  const meds = await getMedicamentos();
+  const key = (m) => (m.nombreComercial || "").toLowerCase().trim();
+  const existing = new Set(meds.map(key));
+  let added = 0;
+  for (const d of DOTACION_NO_CARGO) {
+    const k = (d.nombreComercial || "").toLowerCase().trim();
+    if (existing.has(k)) continue;
+    await addMedicamento({
+      barcode: null,
+      nombreComercial: d.nombreComercial,
+      principioActivo: d.nombreComercial.split(",")[0].trim(),
+      dosis: "",
+      presentacion: d.presentacion || "",
+      grupoTerapeutico: "No cargo",
+      categoria: "otros",
+      stockMinimo: d.stockMinimo || 0,
+      ubicacion: "",
+      notas: "Medicamento de no cargo",
+      foto: null,
+      esDotacion: false,
+      tipoStock: "no_cargo",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    existing.add(k);
+    added++;
+  }
+  return added;
+}
+
+async function seedNoCargoIfEmpty() {
+  const meds = await getMedicamentos();
+  const hasNoCargo = meds.some(m => m.tipoStock === "no_cargo");
+  if (hasNoCargo) return { seeded: false, count: 0 };
+  const n = await importarNoCargoFaltante();
+  return { seeded: n > 0, count: n };
 }

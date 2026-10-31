@@ -20,7 +20,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   await initDefaultAdmin();
   const seed = await seedDotacionIfEmpty();
   if (seed.seeded) {
-    console.log('Dotación cargada:', seed.count, 'medicamentos');
+    console.log('Dotación cargo cargada:', seed.count, 'medicamentos');
+  }
+  const seed2 = await seedNoCargoIfEmpty();
+  if (seed2.seeded) {
+    console.log('No cargo cargados:', seed2.count, 'medicamentos');
   }
   checkSession();
 });
@@ -161,6 +165,7 @@ function navigate(screen) {
   if (screen === 'alertas') loadAlertas();
   if (screen === 'usuarios') loadUsuarios();
   if (screen === 'movimientos') loadMovimientos();
+  if (screen === 'cargo') loadCargoList();
 }
 
 // ========== DASHBOARD ==========
@@ -206,10 +211,9 @@ async function loadDashboard() {
       <div class="mov-item">
         <div>
           <div class="mov-tipo ${m.tipo}">${m.tipo === 'entrada' ? '➕ Entrada' : '➖ Salida'} · ${m.cantidad} uds</div>
-          <div class="text-sm">${nombre}</div>
-          <div class="mov-fecha">${formatDate(m.fecha)} · ${m.usuario || ''}</div>
+          <div class="text-sm" style="font-weight:600">${escapeHtml(nombre)}</div>
+          ${renderMovAudit(m)}
         </div>
-        <div class="text-sm text-muted">${m.motivo || ''}</div>
       </div>`;
   }
   container.innerHTML = html;
@@ -271,6 +275,7 @@ async function loadInventario(filter = '') {
           <div class="meta">
             <span class="badge ${catBadge}">${catLabel}</span>
             <span class="badge ${stockBadge}">${stock}${min > 0 ? '/' + min : ''} uds</span>
+            <span class="badge ${m.tipoStock === 'no_cargo' ? 'badge-no-cargo' : 'badge-cargo'}">${m.tipoStock === 'no_cargo' ? 'No cargo' : 'Cargo'}</span>
             ${m.ubicacion ? ` · 📍 ${escapeHtml(m.ubicacion)}` : ''}
           </div>
         </div>
@@ -307,6 +312,8 @@ async function openDetalleMed(id) {
   if (elGrupo) elGrupo.textContent = med.grupoTerapeutico || '—';
   const elMin = document.getElementById('detalle-stock-minimo');
   if (elMin) elMin.textContent = (med.stockMinimo != null ? med.stockMinimo : 0) + ' uds';
+  const elTipo = document.getElementById('detalle-tipo-stock');
+  if (elTipo) elTipo.textContent = med.tipoStock === 'no_cargo' ? 'No cargo' : 'Cargo';
   document.getElementById('detalle-barcode').textContent = med.barcode || '—';
   document.getElementById('detalle-categoria').textContent = med.categoria || '—';
   document.getElementById('detalle-ubicacion').textContent = med.ubicacion || '—';
@@ -356,8 +363,8 @@ async function openDetalleMed(id) {
       movHtml += `
         <div class="mov-item">
           <div>
-            <div class="mov-tipo ${m.tipo}">${m.tipo === 'entrada' ? '➕' : '➖'} ${m.cantidad} uds</div>
-            <div class="mov-fecha">${formatDate(m.fecha)} · ${m.usuario || ''} · ${m.motivo || ''}</div>
+            <div class="mov-tipo ${m.tipo}">${m.tipo === 'entrada' ? '➕ Entrada' : '➖ Salida'} · ${m.cantidad} uds</div>
+            ${renderMovAudit(m)}
           </div>
         </div>`;
     }
@@ -402,6 +409,8 @@ async function openEditarMed() {
   document.getElementById('med-presentacion').value = med.presentacion || '';
   document.getElementById('med-grupo').value = med.grupoTerapeutico || '';
   document.getElementById('med-stock-minimo').value = med.stockMinimo != null ? med.stockMinimo : 0;
+  const ts = document.getElementById('med-tipo-stock');
+  if (ts) ts.value = med.tipoStock || 'cargo';
   document.getElementById('med-categoria').value = med.categoria || 'comprimidos';
   document.getElementById('med-ubicacion').value = med.ubicacion || '';
   document.getElementById('med-notas').value = med.notas || '';
@@ -432,6 +441,7 @@ async function saveMedicamento(e) {
   const presentacion = document.getElementById('med-presentacion').value.trim();
   const grupo = document.getElementById('med-grupo').value.trim();
   const stockMinimo = parseInt(document.getElementById('med-stock-minimo').value) || 0;
+  const tipoStock = (document.getElementById('med-tipo-stock') || {}).value || 'cargo';
   const categoria = document.getElementById('med-categoria').value;
   const ubicacion = document.getElementById('med-ubicacion').value.trim();
   const notas = document.getElementById('med-notas').value.trim();
@@ -458,6 +468,7 @@ async function saveMedicamento(e) {
     presentacion,
     grupoTerapeutico: grupo,
     stockMinimo,
+    tipoStock,
     categoria,
     ubicacion,
     notas,
@@ -605,13 +616,93 @@ async function lookupBarcodeForMov(barcode) {
 }
 
 // ========== ENTRADA / SALIDA ==========
+
+const MOTIVOS_ENTRADA = [
+  'Compra / recepción de pedido',
+  'Devolución a farmacia',
+  'Ajuste de inventario',
+  'Otro'
+];
+const MOTIVOS_SALIDA = [
+  'Uso',
+  'Caducado',
+  'Otro'
+];
+
+function fillMotivos(tipo) {
+  const sel = document.getElementById('mov-motivo');
+  const label = document.getElementById('mov-motivo-label');
+  const list = tipo === 'salida' ? MOTIVOS_SALIDA : MOTIVOS_ENTRADA;
+  if (label) label.textContent = tipo === 'salida' ? 'Motivo de salida *' : 'Motivo de entrada *';
+  sel.innerHTML = list.map(m => `<option value="${m}">${m}</option>`).join('');
+  const otroGroup = document.getElementById('mov-motivo-otro-group');
+  if (otroGroup) otroGroup.style.display = 'none';
+  const otro = document.getElementById('mov-motivo-otro');
+  if (otro) otro.value = '';
+  sel.onchange = () => {
+    if (otroGroup) otroGroup.style.display = sel.value === 'Otro' ? 'block' : 'none';
+  };
+
+  // Destino solo en salidas por "Uso"
+  const destGroup = document.getElementById('mov-destino-group');
+  const destOtroGroup = document.getElementById('mov-destino-otro-group');
+  const destSel = document.getElementById('mov-destino');
+  if (destGroup) {
+    if (tipo === 'salida') {
+      destGroup.style.display = 'block';
+      if (destSel) destSel.value = '';
+      const syncDestino = () => {
+        const motivo = sel.value;
+        // Destino obligatorio si es Uso
+        if (motivo === 'Uso') {
+          destGroup.style.display = 'block';
+        } else if (motivo === 'Caducado') {
+          destGroup.style.display = 'none';
+          if (destOtroGroup) destOtroGroup.style.display = 'none';
+          if (destSel) destSel.value = '';
+        } else {
+          destGroup.style.display = 'block';
+        }
+        if (destOtroGroup) {
+          destOtroGroup.style.display = (destSel && destSel.value === 'Otro destino') ? 'block' : 'none';
+        }
+      };
+      sel.onchange = () => {
+        if (otroGroup) otroGroup.style.display = sel.value === 'Otro' ? 'block' : 'none';
+        syncDestino();
+      };
+      if (destSel) {
+        destSel.onchange = () => {
+          if (destOtroGroup) destOtroGroup.style.display = destSel.value === 'Otro destino' ? 'block' : 'none';
+        };
+      }
+      syncDestino();
+    } else {
+      destGroup.style.display = 'none';
+      if (destOtroGroup) destOtroGroup.style.display = 'none';
+      if (destSel) destSel.value = '';
+    }
+  }
+
+  const hint = document.getElementById('mov-audit-hint');
+  if (hint && currentUser) {
+    hint.textContent = tipo === 'salida'
+      ? `Control: la retirada quedará a nombre de ${currentUser.nombre} (@${currentUser.username}) con fecha y hora.`
+      : `Quedará registrado: ${currentUser.nombre} · fecha y hora del movimiento.`;
+  }
+}
+
 async function openMovimiento(tipo) {
   document.getElementById('mov-tipo').value = tipo;
   document.getElementById('form-mov-title').textContent = tipo === 'entrada' ? '➕ Nueva Entrada' : '➖ Nueva Salida';
   document.getElementById('form-mov').reset();
+  document.getElementById('mov-tipo').value = tipo;
+  fillMotivos(tipo);
   document.getElementById('mov-med-id').value = '';
   document.getElementById('mov-med-info').style.display = 'none';
   document.getElementById('mov-lotes-select').innerHTML = '<option value="">— Ninguno / Crear nuevo —</option>';
+  const obs = document.getElementById('mov-observaciones');
+  if (obs) obs.value = '';
   
   // Rellenar lista de medicamentos
   const meds = await getMedicamentos();
@@ -688,7 +779,30 @@ async function saveMovimiento(e) {
   const tipo = document.getElementById('mov-tipo').value;
   let medId = parseInt(document.getElementById('mov-med-id').value);
   const cantidad = parseInt(document.getElementById('mov-cantidad').value);
-  const motivo = document.getElementById('mov-motivo').value;
+  let motivo = document.getElementById('mov-motivo').value;
+  if (motivo === 'Otro') {
+    const otro = (document.getElementById('mov-motivo-otro') || {}).value || '';
+    motivo = otro.trim() ? ('Otro: ' + otro.trim()) : 'Otro';
+  }
+  if (!motivo) {
+    showToast('Indica el motivo del movimiento');
+    return;
+  }
+  const observaciones = (document.getElementById('mov-observaciones') || {}).value || '';
+  let destino = '';
+  if (tipo === 'salida') {
+    const destSel = document.getElementById('mov-destino');
+    destino = destSel ? destSel.value : '';
+    if (destino === 'Otro destino') {
+      const dOtro = (document.getElementById('mov-destino-otro') || {}).value || '';
+      destino = dOtro.trim() ? dOtro.trim() : 'Otro destino';
+    }
+    if (motivo === 'Uso' && !destino) {
+      showToast('Indica el destino de la salida (consulta, carro, quirófano...)');
+      return;
+    }
+    if (motivo === 'Caducado') destino = 'Caducado / baja';
+  }
   const loteId = document.getElementById('mov-lotes-select').value;
   const nuevoLote = document.getElementById('mov-nuevo-lote').value.trim();
   const nuevaCaducidad = document.getElementById('mov-nueva-caducidad').value;
@@ -770,14 +884,20 @@ async function saveMovimiento(e) {
     await updateLote(lote);
   }
 
+  const ahora = new Date();
   await addMovimiento({
     medicamentoId: medId,
     loteId: finalLoteId,
     tipo,
     cantidad,
     motivo,
+    destino: destino || null,
+    observaciones: (observaciones || '').trim() || null,
     usuario: currentUser.nombre,
-    fecha: new Date().toISOString()
+    username: currentUser.username,
+    usuarioId: currentUser.id,
+    rol: currentUser.rol,
+    fecha: ahora.toISOString()
   });
 
   showToast(tipo === 'entrada' ? 'Entrada registrada' : 'Salida registrada');
@@ -923,15 +1043,12 @@ async function loadMovimientos() {
   let html = '';
   for (const m of sorted) {
     const med = meds.find(x => x.id === m.medicamentoId);
+    const nombre = med ? (med.nombreComercial || med.principioActivo) : '—';
     html += `
-      <div class="card">
-        <div class="flex-between">
-          <div>
-            <div class="mov-tipo ${m.tipo}">${m.tipo === 'entrada' ? '➕ Entrada' : '➖ Salida'} · ${m.cantidad} uds</div>
-            <div class="text-sm" style="font-weight:600">${med ? escapeHtml(med.nombreComercial) : '—'}</div>
-            <div class="mov-fecha">${formatDate(m.fecha)} · ${m.usuario || ''} · ${m.motivo || ''}</div>
-          </div>
-        </div>
+      <div class="card mov-card ${m.tipo}">
+        <div class="mov-tipo ${m.tipo}">${m.tipo === 'entrada' ? '➕ ENTRADA' : '➖ SALIDA'} · ${m.cantidad} uds</div>
+        <div class="text-sm" style="font-weight:700;margin:4px 0">${escapeHtml(nombre)}</div>
+        ${renderMovAudit(m)}
       </div>`;
   }
   container.innerHTML = html;
@@ -1004,6 +1121,23 @@ async function eliminarUsuario(id) {
   showToast('Usuario eliminado');
   scheduleSync();
   loadUsuarios();
+}
+
+
+function renderMovAudit(m) {
+  const quien = m.usuario || m.username || '—';
+  const userTag = m.username ? ` (@${m.username})` : '';
+  const cuando = formatDate(m.fecha);
+  if (m.tipo === 'salida') {
+    let extra = '';
+    if (m.destino) extra += `<div class="mov-audit">📍 Destino: <strong>${escapeHtml(m.destino)}</strong></div>`;
+    if (m.observaciones) extra += `<div class="mov-audit">📝 ${escapeHtml(m.observaciones)}</div>`;
+    return `<div class="mov-audit">👤 Retirado por: <strong>${escapeHtml(quien)}</strong>${escapeHtml(userTag)} · 🕒 ${cuando}</div>
+            <div class="mov-audit">📋 Motivo: <strong>${escapeHtml(m.motivo || '—')}</strong></div>
+            ${extra}`;
+  }
+  return `<div class="mov-audit">👤 Registrado por: <strong>${escapeHtml(quien)}</strong>${escapeHtml(userTag)} · 🕒 ${cuando}</div>
+          <div class="mov-audit">📋 Motivo: <strong>${escapeHtml(m.motivo || '—')}</strong>${m.observaciones ? ' · ' + escapeHtml(m.observaciones) : ''}</div>`;
 }
 
 // ========== UTILS ==========
@@ -1079,8 +1213,93 @@ async function cargarDotacion() {
   if (!confirm('¿Añadir medicamentos de la dotación mínima que aún no estén en el inventario?')) return;
   showToast('Cargando dotación...');
   const n = await importarDotacionFaltante();
-  showToast(n > 0 ? ('Añadidos ' + n + ' de la dotación') : 'La dotación ya estaba completa');
+  const n2 = await importarNoCargoFaltante();
+  showToast(`Catálogos: +${n} cargo, +${n2} no cargo`);
   scheduleSync();
+  loadInventario();
+  loadDashboard();
+}
+
+
+let filtroCargoActual = 'cargo';
+
+function setFiltroCargo(tipo) {
+  filtroCargoActual = tipo;
+  ['cargo', 'no_cargo', 'todos'].forEach(t => {
+    const id = t === 'no_cargo' ? 'btn-filtro-no-cargo' : (t === 'todos' ? 'btn-filtro-todos' : 'btn-filtro-cargo');
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.className = 'btn btn-sm ' + (filtroCargoActual === t ? 'btn-primary' : 'btn-secondary');
+    btn.style.flex = '1';
+  });
+  const hint = document.getElementById('cargo-hint');
+  if (hint) {
+    if (tipo === 'cargo') hint.textContent = 'Dotación mínima (cargo) — control de stock obligatorio';
+    else if (tipo === 'no_cargo') hint.textContent = 'No cargo — pedidos y control por separado';
+    else hint.textContent = 'Todos los medicamentos';
+  }
+  loadCargoList();
+}
+
+async function loadCargoList() {
+  const meds = await getMedicamentos();
+  const q = ((document.getElementById('search-cargo') || {}).value || '').toLowerCase().trim();
+  let list = meds;
+  if (filtroCargoActual === 'cargo') {
+    list = meds.filter(m => (m.tipoStock || 'cargo') !== 'no_cargo');
+  } else if (filtroCargoActual === 'no_cargo') {
+    list = meds.filter(m => m.tipoStock === 'no_cargo');
+  }
+  if (q) {
+    list = list.filter(m =>
+      (m.nombreComercial || '').toLowerCase().includes(q) ||
+      (m.principioActivo || '').toLowerCase().includes(q) ||
+      (m.presentacion || '').toLowerCase().includes(q)
+    );
+  }
+  list.sort((a, b) => (a.nombreComercial || '').localeCompare(b.nombreComercial || ''));
+  const container = document.getElementById('cargo-list');
+  if (!container) return;
+  if (list.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">📦</div>No hay medicamentos en este listado<br><button class="btn btn-primary mt-16" onclick="cargarCatalogos()">Cargar catálogos</button></div>';
+    return;
+  }
+  let html = '';
+  for (const m of list) {
+    const stock = await getStockTotal(m.id);
+    const min = m.stockMinimo != null ? m.stockMinimo : 0;
+    const bajo = min > 0 && stock < min;
+    html += `
+      <div class="card med-item" onclick="openDetalleMed(${m.id})">
+        <div class="med-photo placeholder">${m.tipoStock === 'no_cargo' ? '📋' : '📦'}</div>
+        <div class="med-info">
+          <div class="name">${escapeHtml(m.nombreComercial || m.principioActivo)}</div>
+          <div class="principio">${escapeHtml([m.presentacion, m.principioActivo].filter(Boolean).join(' · '))}</div>
+          <div class="meta">
+            <span class="badge ${bajo ? 'badge-bajo' : 'badge-stock'}">${stock}${min > 0 ? '/' + min : ''} uds</span>
+            <span class="badge ${m.tipoStock === 'no_cargo' ? 'badge-no-cargo' : 'badge-cargo'}">${m.tipoStock === 'no_cargo' ? 'No cargo' : 'Cargo'}</span>
+          </div>
+        </div>
+      </div>`;
+  }
+  container.innerHTML = html;
+}
+
+function filterCargoList() {
+  loadCargoList();
+}
+
+async function cargarCatalogos() {
+  if (!currentUser || currentUser.rol !== 'admin') {
+    showToast('Solo administradores');
+    return;
+  }
+  showToast('Cargando catálogos...');
+  const n1 = await importarDotacionFaltante();
+  const n2 = await importarNoCargoFaltante();
+  showToast(`Añadidos: ${n1} cargo, ${n2} no cargo`);
+  scheduleSync();
+  loadCargoList();
   loadInventario();
   loadDashboard();
 }
