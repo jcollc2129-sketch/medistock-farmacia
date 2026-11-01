@@ -314,6 +314,76 @@
     </div>
   </div>
 
+
+  <!-- Detalle material / lab / vacunas (mismo estilo que medicamentos) -->
+  <div id="modal-detalle-extra" class="modal-overlay" onclick="if(event.target===this)closeDetalleExtra()">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="dx-titulo">—</h2>
+        <button class="modal-close" onclick="closeDetalleExtra()">×</button>
+      </div>
+      <input type="hidden" id="dx-id">
+      <input type="hidden" id="dx-modulo" value="material">
+
+      <img id="dx-foto" class="photo-preview" style="display:none;max-width:100%;height:auto;border-radius:12px;margin-bottom:12px">
+
+      <div class="form-group" id="dx-row-cat">
+        <label>Categoría</label>
+        <div id="dx-categoria">—</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Referencia</label>
+          <div id="dx-referencia">—</div>
+        </div>
+        <div class="form-group">
+          <label>Código de barras</label>
+          <div id="dx-barcode">—</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Ubicación</label>
+          <div id="dx-ubicacion">—</div>
+        </div>
+        <div class="form-group">
+          <label>Tipo de stock</label>
+          <div id="dx-tipo-stock">—</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Stock total</label>
+          <div id="dx-stock" style="font-weight:700;font-size:1.2rem">—</div>
+        </div>
+        <div class="form-group">
+          <label>Stock mínimo</label>
+          <div id="dx-stock-minimo">—</div>
+        </div>
+      </div>
+      <div class="form-group" id="dx-row-cad">
+        <label>Caducidad</label>
+        <div id="dx-caducidad">—</div>
+      </div>
+      <div class="form-group">
+        <label>Notas</label>
+        <div id="dx-notas">—</div>
+      </div>
+
+      <div class="flex gap-8 mt-12">
+        <button class="btn btn-success" style="flex:1" onclick="fromDetalleExtraEntrada()">➕ Entrada</button>
+        <button class="btn btn-danger" style="flex:1" onclick="fromDetalleExtraSalida()">➖ Salida</button>
+        <button class="btn btn-secondary" onclick="fromDetalleExtraEditar()">✏️</button>
+      </div>
+
+      <h3 class="section-title" id="dx-lotes-title">Lotes</h3>
+      <div id="dx-lotes"></div>
+
+      <h3 class="section-title">Últimos movimientos</h3>
+      <div id="dx-movs"></div>
+    </div>
+  </div>
+
   <!-- ========== MODAL NUEVO/EDITAR MED ========== -->
   <div id="modal-med" class="modal-overlay" onclick="if(event.target===this)closeModalMed()">
     <div class="modal">

@@ -1556,7 +1556,7 @@ async function loadMaterialList() {
     const min = m.stockMinimo || 0;
     const bajo = min > 0 && stock < min;
     html += `
-      <div class="card med-item" onclick="openMaterialForm(${m.id})">
+      <div class="card med-item" onclick="openDetalleMaterial(${m.id})">
         ${m.foto
           ? `<img class="med-photo" src="${m.foto}" alt="">`
           : `<div class="med-photo placeholder">🩹</div>`}
@@ -1844,7 +1844,7 @@ async function loadExtraList(modulo) {
     const stock = m.stock != null ? m.stock : 0;
     const min = m.stockMinimo || 0;
     const bajo = min > 0 && stock < min;
-    html += `<div class="card med-item" onclick="openExtraForm('${modulo}', ${m.id})">
+    html += `<div class="card med-item" onclick="openDetalleExtra('${modulo}', ${m.id})">
       ${m.foto ? `<img class="med-photo" src="${m.foto}" alt="">` : `<div class="med-photo placeholder">${icon}</div>`}
       <div class="med-info">
         <div class="name">${escapeHtml(m.nombre)}</div>
@@ -1927,4 +1927,160 @@ function removeExtraPhoto() {
   if (preview) { preview.src = ''; preview.style.display = 'none'; }
   const input = document.getElementById('extra-foto-input');
   if (input) input.value = '';
+}
+
+
+// ========== DETALLE MATERIAL / LAB / VACUNAS ==========
+function closeDetalleExtra() {
+  const m = document.getElementById('modal-detalle-extra');
+  if (m) m.classList.remove('show');
+}
+
+async function openDetalleMaterial(id) {
+  const mat = await getMaterialById(id);
+  if (!mat) return;
+  document.getElementById('dx-modulo').value = 'material';
+  document.getElementById('dx-id').value = id;
+  document.getElementById('dx-titulo').textContent = mat.nombre || '—';
+  document.getElementById('dx-categoria').textContent = mat.categoria || '—';
+  document.getElementById('dx-referencia').textContent = mat.referencia || '—';
+  document.getElementById('dx-barcode').textContent = mat.barcode || '—';
+  document.getElementById('dx-ubicacion').textContent = mat.ubicacion || '—';
+  document.getElementById('dx-tipo-stock').textContent = mat.tipoStock === 'no_cargo' ? 'No cargo' : 'Cargo';
+  const stock = await getStockMaterial(id);
+  document.getElementById('dx-stock').textContent = stock + ' unidades';
+  document.getElementById('dx-stock-minimo').textContent = (mat.stockMinimo != null ? mat.stockMinimo : 0) + ' uds';
+  document.getElementById('dx-caducidad').textContent = '—';
+  document.getElementById('dx-notas').textContent = mat.notas || '—';
+  document.getElementById('dx-row-cad').style.display = 'none';
+  document.getElementById('dx-lotes-title').style.display = 'block';
+
+  const foto = document.getElementById('dx-foto');
+  if (mat.foto) { foto.src = mat.foto; foto.style.display = 'block'; }
+  else { foto.style.display = 'none'; }
+
+  // Lotes
+  const lotes = await getLotesMaterial(id);
+  const hoy = new Date();
+  const en30 = new Date(); en30.setDate(en30.getDate() + 30);
+  let lotesHtml = '';
+  const activos = lotes.filter(l => (l.cantidad || 0) > 0);
+  if (!activos.length) {
+    lotesHtml = '<p class="text-muted text-sm">Sin lotes registrados</p>';
+  } else {
+    activos.sort((a, b) => {
+      if (!a.caducidad) return 1;
+      if (!b.caducidad) return -1;
+      return new Date(a.caducidad) - new Date(b.caducidad);
+    });
+    for (const l of activos) {
+      let cls = '';
+      if (l.caducidad) {
+        const cad = new Date(l.caducidad);
+        if (cad < hoy) cls = 'caducado';
+        else if (cad <= en30) cls = 'proximo';
+      }
+      lotesHtml += `<div class="lote-item ${cls}">
+        <div class="lote-header">
+          <span>Lote: ${escapeHtml(l.numeroLote || 'S/N')}</span>
+          <span>${l.cantidad} uds</span>
+        </div>
+        <div class="lote-meta">${l.caducidad ? 'Caducidad: ' + formatDateShort(l.caducidad) : 'Sin caducidad'} ${cls === 'caducado' ? '⚠️ CADUCADO' : cls === 'proximo' ? '⏰ Próximo' : ''}</div>
+      </div>`;
+    }
+  }
+  document.getElementById('dx-lotes').innerHTML = lotesHtml;
+
+  // Movimientos material
+  const allMovs = await getAllMovimientosMaterial();
+  const movs = allMovs.filter(m => m.materialId === Number(id) || m.materialId === id)
+    .sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 15);
+  let movHtml = '';
+  if (!movs.length) movHtml = '<p class="text-muted text-sm">Sin movimientos</p>';
+  else {
+    for (const m of movs) {
+      movHtml += `<div class="mov-item"><div>
+        <div class="mov-tipo ${m.tipo}">${m.tipo === 'entrada' ? '➕ Entrada' : '➖ Salida'} · ${m.cantidad} uds</div>
+        <div class="mov-audit">👤 ${escapeHtml(m.usuario || m.username || '—')} · 🕒 ${formatDate(m.fecha)}</div>
+        <div class="mov-audit">📋 ${escapeHtml(m.motivo || '—')}</div>
+      </div></div>`;
+    }
+  }
+  document.getElementById('dx-movs').innerHTML = movHtml;
+  document.getElementById('modal-detalle-extra').classList.add('show');
+}
+
+async function openDetalleExtra(modulo, id) {
+  const item = await getExtraItemById(modulo, id);
+  if (!item) return;
+  document.getElementById('dx-modulo').value = modulo;
+  document.getElementById('dx-id').value = id;
+  document.getElementById('dx-titulo').textContent = item.nombre || '—';
+  document.getElementById('dx-categoria').textContent = item.categoria || '—';
+  document.getElementById('dx-referencia').textContent = '—';
+  document.getElementById('dx-barcode').textContent = '—';
+  document.getElementById('dx-ubicacion').textContent = item.ubicacion || '—';
+  document.getElementById('dx-tipo-stock').textContent = modulo === 'vacunas' ? 'Vacuna' : 'Laboratorio';
+  document.getElementById('dx-stock').textContent = (item.stock != null ? item.stock : 0) + ' unidades';
+  document.getElementById('dx-stock-minimo').textContent = (item.stockMinimo != null ? item.stockMinimo : 0) + ' uds';
+  document.getElementById('dx-caducidad').textContent = item.caducidad || '—';
+  document.getElementById('dx-notas').textContent = item.notas || '—';
+  document.getElementById('dx-row-cad').style.display = 'block';
+  document.getElementById('dx-lotes-title').style.display = 'none';
+  document.getElementById('dx-lotes').innerHTML = '';
+
+  const foto = document.getElementById('dx-foto');
+  if (item.foto) { foto.src = item.foto; foto.style.display = 'block'; }
+  else { foto.style.display = 'none'; }
+
+  document.getElementById('dx-movs').innerHTML = '<p class="text-muted text-sm">Los movimientos actualizan el stock del ítem</p>';
+  document.getElementById('modal-detalle-extra').classList.add('show');
+}
+
+function fromDetalleExtraEntrada() {
+  const modulo = document.getElementById('dx-modulo').value;
+  const id = document.getElementById('dx-id').value;
+  closeDetalleExtra();
+  if (modulo === 'material') {
+    openMaterialMovimiento('entrada').then(() => {
+      const sel = document.getElementById('mat-mov-select');
+      if (sel) {
+        sel.value = id;
+        sel.dispatchEvent(new Event('change'));
+      }
+    });
+  } else {
+    openExtraMov(modulo, 'entrada').then(() => {
+      const sel = document.getElementById('extra-mov-select');
+      if (sel) sel.value = id;
+    });
+  }
+}
+
+function fromDetalleExtraSalida() {
+  const modulo = document.getElementById('dx-modulo').value;
+  const id = document.getElementById('dx-id').value;
+  closeDetalleExtra();
+  if (modulo === 'material') {
+    openMaterialMovimiento('salida').then(() => {
+      const sel = document.getElementById('mat-mov-select');
+      if (sel) {
+        sel.value = id;
+        sel.dispatchEvent(new Event('change'));
+      }
+    });
+  } else {
+    openExtraMov(modulo, 'salida').then(() => {
+      const sel = document.getElementById('extra-mov-select');
+      if (sel) sel.value = id;
+    });
+  }
+}
+
+function fromDetalleExtraEditar() {
+  const modulo = document.getElementById('dx-modulo').value;
+  const id = parseInt(document.getElementById('dx-id').value);
+  closeDetalleExtra();
+  if (modulo === 'material') openMaterialForm(id);
+  else openExtraForm(modulo, id);
 }
