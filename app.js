@@ -49,6 +49,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       const e = await importarEstupefacientesFaltante();
       if (e > 0) console.log('Estupefacientes extra:', e);
     }
+    if (typeof seedMaterialIfEmpty === 'function') {
+      const sm = await seedMaterialIfEmpty();
+      if (sm.seeded) console.log('Material sanitario:', sm.count);
+    }
   } catch (err) { console.warn(err); }
   checkSession();
 });
@@ -1276,7 +1280,8 @@ async function cargarDotacion() {
   const n2 = await importarNoCargoFaltante();
   const n3 = await importarHospitalarioFaltante();
   const n4 = await importarEstupefacientesFaltante();
-  showToast(`Catálogos: +${n} cargo, +${n2} no cargo, +${n3} hosp., +${n4} estupef.`);
+  const n5 = typeof importarMaterialFaltante === 'function' ? await importarMaterialFaltante() : 0;
+  showToast(`Catálogos: +${n} cargo, +${n2} no cargo, +${n3} hosp., +${n4} estupef., +${n5} material`);
   scheduleSync();
   loadInventario();
   loadDashboard();
@@ -1381,7 +1386,8 @@ async function cargarCatalogos() {
   const n2 = await importarNoCargoFaltante();
   const n3 = await importarHospitalarioFaltante();
   const n4 = await importarEstupefacientesFaltante();
-  showToast(`Añadidos: ${n1} cargo, ${n2} no cargo, ${n3} hosp., ${n4} estupef.`);
+  const n5 = typeof importarMaterialFaltante === 'function' ? await importarMaterialFaltante() : 0;
+  showToast(`Añadidos: ${n1} cargo, ${n2} no cargo, ${n3} hosp., ${n4} estupef., ${n5} material`);
   scheduleSync();
   loadCargoList();
   loadInventario();
@@ -1489,7 +1495,7 @@ async function loadMaterialList() {
   const el = document.getElementById('material-list');
   if (!el) return;
   if (!filtered.length) {
-    el.innerHTML = '<div class="empty-state"><div class="icon">🩹</div>No hay material registrado<br><button class="btn btn-primary mt-16" onclick="openMaterialForm()">Añadir material</button></div>';
+    el.innerHTML = '<div class="empty-state"><div class="icon">🩹</div>No hay material registrado<br><button class="btn btn-primary mt-16" onclick="openMaterialForm()">Añadir material</button><br><button class="btn btn-secondary mt-16" onclick="cargarMaterialDotacion()">Cargar dotación material</button></div>';
     return;
   }
   let html = '';
@@ -1641,4 +1647,16 @@ async function loadMaterialMovimientos() {
       <div class="mov-audit">📋 ${escapeHtml(m.motivo || '—')}${m.observaciones ? ' · ' + escapeHtml(m.observaciones) : ''}</div>
     </div>`;
   }).join('');
+}
+
+async function cargarMaterialDotacion() {
+  if (typeof importarMaterialFaltante !== 'function') {
+    showToast('Catálogo de material no disponible en esta versión');
+    return;
+  }
+  showToast('Cargando dotación de material...');
+  const n = await importarMaterialFaltante();
+  showToast(n > 0 ? ('Añadidos ' + n + ' materiales') : 'La dotación de material ya estaba completa');
+  scheduleSync();
+  loadMaterialList();
 }

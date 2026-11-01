@@ -1,0 +1,133 @@
+// Dotación mínima de MATERIAL SANITARIO (independiente de medicamentos)
+const DOTACION_MATERIAL = [
+  { nombre: "Aguja 0,5x16", categoria: "jeringas", stockMinimo: 40 },
+  { nombre: "Aguja 0,8X25 IV 21G 1", categoria: "jeringas", stockMinimo: 100 },
+  { nombre: "Aguja 0,8X40 IM 21G 1 1/2", categoria: "jeringas", stockMinimo: 100 },
+  { nombre: "Algodón hidrófilo 50 g paquete DEF", categoria: "gasas", stockMinimo: 60 },
+  { nombre: "Apósito quirúrgicos 9X15", categoria: "apositos", stockMinimo: 60 },
+  { nombre: "Apósito quirúrgicos 9X5", categoria: "apositos", stockMinimo: 120 },
+  { nombre: "Apósitos adhesivos plásticos (Rollo de 6 cm x 1 m.)", categoria: "apositos", stockMinimo: 8 },
+  { nombre: "Apósitos autoadhesivos estériles 10 x 10 (E / 5 unidades)", categoria: "apositos", stockMinimo: 20 },
+  { nombre: "Apósitos autoadhesivos estériles 6 x 7 (E / 5 unidades)", categoria: "apositos", stockMinimo: 20 },
+  { nombre: "Apósitos compresivos estériles 5 x 5 (E / 3 unidades)", categoria: "apositos", stockMinimo: 20 },
+  { nombre: "Apósitos de quemados tipo Water Jel", categoria: "apositos", stockMinimo: 40 },
+  { nombre: "Banda elástica de velcro o compresor de goma", categoria: "otros", stockMinimo: 20 },
+  { nombre: "Bañera ocular", categoria: "otros", stockMinimo: 16 },
+  { nombre: "Bastoncillos con torunda de algodón", categoria: "gasas", stockMinimo: 4 },
+  { nombre: "Bateas de cartón", categoria: "otros", stockMinimo: 40 },
+  { nombre: "Bisturí desechable nº 11 c/mango", categoria: "otros", stockMinimo: 20 },
+  { nombre: "Bisturí desechable nº 15 c/mango", categoria: "otros", stockMinimo: 20 },
+  { nombre: "Bolsas de frío / calor reutilizables", categoria: "otros", stockMinimo: 40 },
+  { nombre: "Bolsas de frío instantaneo", categoria: "otros", stockMinimo: 40 },
+  { nombre: "Bolsas de recolección de orina 2 litros", categoria: "sondas", stockMinimo: 20 },
+  { nombre: "Bolsas para esterilización unidosis", categoria: "otros", stockMinimo: 200 },
+  { nombre: "Botella de orina (hombres)", categoria: "otros", stockMinimo: 8 },
+  { nombre: "Cánula de Guedel", categoria: "sondas", stockMinimo: 20 },
+  { nombre: "Cateter vía periférica nº 14 unidades", categoria: "sondas", stockMinimo: 16 },
+  { nombre: "Cateter vía periférica nº 18 unidades", categoria: "sondas", stockMinimo: 16 },
+  { nombre: "Cateter vía periférica nº 20 unidades", categoria: "sondas", stockMinimo: 16 },
+  { nombre: "Compresas gasa estéril 20X20 sobre 5 unidades DEF", categoria: "gasas", stockMinimo: 400 },
+  { nombre: "Compresas tocológicas", categoria: "gasas", stockMinimo: 120 },
+  { nombre: "Contenedor bacteriológico de 10 litros", categoria: "otros", stockMinimo: 8 },
+  { nombre: "Contenedor de residuos biopeligrosos (1 litro)", categoria: "otros", stockMinimo: 8 },
+  { nombre: "Cuña (mujeres)", categoria: "otros", stockMinimo: 8 },
+  { nombre: "Depresores de lengua c/ 100 unidades", categoria: "otros", stockMinimo: 4 },
+  { nombre: "Equipo de administración de sueros con cámara de goteo", categoria: "suero", stockMinimo: 40 },
+  { nombre: "Esparadrapo 2,5 X 5", categoria: "apositos", stockMinimo: 40 },
+  { nombre: "Esparadrapo 5 X 5", categoria: "apositos", stockMinimo: 40 },
+  { nombre: "Esparadrapo hipoalérgico 2,5 X 5", categoria: "apositos", stockMinimo: 20 },
+  { nombre: "Esparadrapo hipoalérgico 5 X 5", categoria: "apositos", stockMinimo: 20 },
+  { nombre: "Férulas de aluminio maleable para antebrazo y mano 8 x 50", categoria: "otros", stockMinimo: 20 },
+  { nombre: "Férulas de aluminio maleable para dedos 2 x 50", categoria: "otros", stockMinimo: 40 },
+  { nombre: "Gasa hidrófila estéril 0,5 x 1 sobre DEF", categoria: "gasas", stockMinimo: 20 },
+  { nombre: "Gasa vaselinada 20 X 8,5 sobres unidosis", categoria: "gasas", stockMinimo: 80 },
+  { nombre: "Gasas grasas 23 x 14 (E / 20 sobres)", categoria: "gasas", stockMinimo: 8 },
+  { nombre: "Gasas grasas 7 x 9 (E / 20 sobres)", categoria: "gasas", stockMinimo: 8 },
+  { nombre: "Grapadora desechable para sutura (caja de 12 grapadoras con 5 grapas)", categoria: "suturas", stockMinimo: 4 },
+  { nombre: "Guantes de nitrilo T/M no estériles c/ 100 unidades", categoria: "guantes", stockMinimo: 12 },
+  { nombre: "Guantes quirúrgicos nº 7 unidades", categoria: "guantes", stockMinimo: 20 },
+  { nombre: "Guantes quirúrgicos nº 7,5 unidades", categoria: "guantes", stockMinimo: 20 },
+  { nombre: "Guantes quirúrgicos nº 8,5 unidades", categoria: "guantes", stockMinimo: 20 },
+  { nombre: "Jeringa de 100 cc", categoria: "jeringas", stockMinimo: 8 },
+  { nombre: "Jeringa estéril 10 ml", categoria: "jeringas", stockMinimo: 120 },
+  { nombre: "Jeringa estéril 5 ml", categoria: "jeringas", stockMinimo: 120 },
+  { nombre: "Jeringa estéril insulina", categoria: "jeringas", stockMinimo: 80 },
+  { nombre: "Lancetas (E / 50 unidades)", categoria: "jeringas", stockMinimo: 4 },
+  { nombre: "Llave de tres vías", categoria: "suero", stockMinimo: 40 },
+  { nombre: "Manta para quemados Water Jel", categoria: "otros", stockMinimo: 8 },
+  { nombre: "Manta termoisolante oro-plata", categoria: "otros", stockMinimo: 20 },
+  { nombre: "Mascara facial Water Jel", categoria: "mascarillas", stockMinimo: 20 },
+  { nombre: "Mascarilla de oxigenoterapia", categoria: "mascarillas", stockMinimo: 20 },
+  { nombre: "Mascarilla quirúrgica", categoria: "mascarillas", stockMinimo: 80 },
+  { nombre: "Paño de campo fenestrado esteril de un solo uso", categoria: "otros", stockMinimo: 20 },
+  { nombre: "Pañuelo triangular DEF", categoria: "otros", stockMinimo: 8 },
+  { nombre: "Parche oclusivo ocular grande", categoria: "apositos", stockMinimo: 20 },
+  { nombre: "Preservativos", categoria: "otros", stockMinimo: 96 },
+  { nombre: "Rasuradoras quirurgicas desechables", categoria: "otros", stockMinimo: 40 },
+  { nombre: "Recipiente esteril para muestras orina", categoria: "otros", stockMinimo: 40 },
+  { nombre: "Regulador de flujo p/fluidoterapia", categoria: "suero", stockMinimo: 16 },
+  { nombre: "Rollo de papel p/camilla", categoria: "otros", stockMinimo: 8 },
+  { nombre: "Sábana estéril para quemados 1,40 x 2,20 (individual)", categoria: "otros", stockMinimo: 8 },
+  { nombre: "Sacos para cadaveres", categoria: "otros", stockMinimo: 12 },
+  { nombre: "Sonda Foley nº16", categoria: "sondas", stockMinimo: 8 },
+  { nombre: "Sonda Foley nº18", categoria: "sondas", stockMinimo: 8 },
+  { nombre: "Sonda nasogastrica nº16", categoria: "sondas", stockMinimo: 8 },
+  { nombre: "Sutura de seda nº 0 aguja triangular curva", categoria: "suturas", stockMinimo: 40 },
+  { nombre: "Sutura de seda nº 2/0 aguja triangular curva", categoria: "suturas", stockMinimo: 40 },
+  { nombre: "Sutura de seda nº 3/0 aguja triangular curva", categoria: "suturas", stockMinimo: 40 },
+  { nombre: "Sutura de seda nº 4/0 aguja triangular curva", categoria: "suturas", stockMinimo: 40 },
+  { nombre: "Sutura sintética absorbible nº 0", categoria: "suturas", stockMinimo: 40 },
+  { nombre: "Sutura sintética absorbible nº 2/0", categoria: "suturas", stockMinimo: 40 },
+  { nombre: "Suturas cutaneas esteriles 6mm x 102 mm. (E / 5 unidades)", categoria: "suturas", stockMinimo: 20 },
+  { nombre: "Tacón protector escayola (tipo Tovipie)", categoria: "otros", stockMinimo: 8 },
+  { nombre: "Tapon cateter (obturador intermitente)", categoria: "sondas", stockMinimo: 20 },
+  { nombre: "Termómetro clinico unidades", categoria: "otros", stockMinimo: 16 },
+  { nombre: "Test embarazo", categoria: "otros", stockMinimo: 8 },
+  { nombre: "Tiritas banda 1 m x 6 cm tela", categoria: "apositos", stockMinimo: 40 },
+  { nombre: "Torniquete", categoria: "otros", stockMinimo: 12 },
+  { nombre: "Válvula de Heimlich", categoria: "otros", stockMinimo: 8 },
+  { nombre: "Venda algodón 10 X 2,75", categoria: "apositos", stockMinimo: 60 },
+  { nombre: "Venda de gasa coadhesiva 10 x 5", categoria: "apositos", stockMinimo: 60 },
+  { nombre: "Venda de gasa coadhesiva 5 X 5", categoria: "apositos", stockMinimo: 60 },
+  { nombre: "Venda de gasa coadhesiva 7 X 5", categoria: "apositos", stockMinimo: 60 },
+  { nombre: "Venda de gasa tubular para dedos con aplicador (rollo)", categoria: "apositos", stockMinimo: 8 },
+  { nombre: "Venda de yeso 15 x 15", categoria: "otros", stockMinimo: 20 },
+  { nombre: "Venda elástica (crepe) 10 X10", categoria: "apositos", stockMinimo: 60 },
+  { nombre: "Venda elástica (crepe) 7 X 4", categoria: "apositos", stockMinimo: 60 },
+  { nombre: "Venda elástica adhesiva 10 X 2,70", categoria: "apositos", stockMinimo: 16 },
+  { nombre: "Venda elástica adhesiva 7,5 X 2,70", categoria: "apositos", stockMinimo: 16 },
+  { nombre: "Venda tubular malla nº3", categoria: "apositos", stockMinimo: 8 },
+  { nombre: "Venda tubular malla nº5", categoria: "apositos", stockMinimo: 8 },
+  { nombre: "Venda tubular malla nº7", categoria: "apositos", stockMinimo: 8 },
+  { nombre: "Venda yeso 10 x 10", categoria: "otros", stockMinimo: 20 },
+];
+
+async function importarMaterialFaltante() {
+  const mats = await getMateriales();
+  const key = (m) => (m.nombre || "").toLowerCase().trim();
+  const existing = new Set(mats.map(key));
+  let added = 0;
+  for (const d of DOTACION_MATERIAL) {
+    const k = (d.nombre || "").toLowerCase().trim();
+    if (existing.has(k)) continue;
+    await addMaterial({
+      nombre: d.nombre,
+      categoria: d.categoria || "otros",
+      referencia: null,
+      barcode: null,
+      stockMinimo: d.stockMinimo || 0,
+      ubicacion: "",
+      notas: "Dotación material sanitario",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    existing.add(k);
+    added++;
+  }
+  return added;
+}
+
+async function seedMaterialIfEmpty() {
+  const n = await importarMaterialFaltante();
+  return { seeded: n > 0, count: n };
+}

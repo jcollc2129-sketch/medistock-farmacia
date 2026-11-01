@@ -1,4 +1,4 @@
-const CACHE_NAME = 'medistock-v18';
+const CACHE_NAME = 'medistock-v19';
 const ASSETS = [
   './',
   './index.html',
@@ -6,6 +6,7 @@ const ASSETS = [
   './app.js',
   './db.js',
   './dotacion.js',
+  './material_catalog.js',
   './sync.js',
   './manifest.json',
   './icon-192.png',
