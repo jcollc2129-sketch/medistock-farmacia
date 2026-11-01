@@ -1,6 +1,6 @@
 // MediStock - IndexedDB Database Layer
 const DB_NAME = 'MediStockDB';
-const DB_VERSION = 3;
+const DB_VERSION = 2;
 
 let db = null;
 
@@ -69,14 +69,6 @@ function openDB() {
         mm.createIndex('tipo', 'tipo', { unique: false });
       }
 
-      if (!database.objectStoreNames.contains('laboratorio')) {
-        const s = database.createObjectStore('laboratorio', { keyPath: 'id', autoIncrement: true });
-        s.createIndex('nombre', 'nombre', { unique: false });
-      }
-      if (!database.objectStoreNames.contains('vacunas')) {
-        const s = database.createObjectStore('vacunas', { keyPath: 'id', autoIncrement: true });
-        s.createIndex('nombre', 'nombre', { unique: false });
-      }
       // Config
       if (!database.objectStoreNames.contains('config')) {
         database.createObjectStore('config', { keyPath: 'key' });
@@ -487,45 +479,6 @@ async function addMovimientoMaterial(mov) {
   return new Promise((resolve, reject) => {
     const tx = database.transaction('movimientosMaterial', 'readwrite');
     const req = tx.objectStore('movimientosMaterial').add(mov);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-
-// ========== LABORATORIO / VACUNAS ==========
-async function getExtraItems(storeName) {
-  const database = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction(storeName, 'readonly');
-    const req = tx.objectStore(storeName).getAll();
-    req.onsuccess = () => resolve(req.result || []);
-    req.onerror = () => reject(req.error);
-  });
-}
-async function getExtraItemById(storeName, id) {
-  const database = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction(storeName, 'readonly');
-    const req = tx.objectStore(storeName).get(Number(id));
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-async function addExtraItem(storeName, item) {
-  const database = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction(storeName, 'readwrite');
-    const req = tx.objectStore(storeName).add(item);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-async function updateExtraItem(storeName, item) {
-  const database = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = database.transaction(storeName, 'readwrite');
-    const req = tx.objectStore(storeName).put(item);
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });

@@ -705,7 +705,3 @@ body {
 #mov-medico-group label { color: #9f1239; }
 
 #screen-cargo .btn-sm { font-size: 0.72rem; padding: 8px 6px; }
-
-.bottom-nav .nav-item { padding: 6px 6px; max-width: 64px; }
-.bottom-nav .nav-item .icon { font-size: 1.25rem; }
-.header-actions .btn-sm { min-width: 36px; }

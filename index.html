@@ -53,7 +53,6 @@
           <button class="btn btn-sm btn-secondary" onclick="manualSync()" title="Sincronizar">☁️</button>
           <button class="btn btn-sm btn-secondary" onclick="exportBackupFile()" title="Exportar copia">💾</button>
           <button class="btn btn-sm btn-secondary" onclick="cargarDotacion()" title="Cargar dotación mínima">📋</button>
-          <button class="btn btn-sm btn-secondary" id="btn-header-usuarios" onclick="navigate('usuarios')" title="Usuarios">👥</button>
           <button class="btn btn-sm btn-secondary" onclick="importBackupFile()" title="Importar copia">📥</button>
           <button class="btn btn-sm btn-secondary" onclick="logout()" title="Cerrar sesión">Salir</button>
         </div>
@@ -167,43 +166,6 @@
     </div>
 
     <!-- BOTTOM NAV -->
-
-    <!-- LABORATORIO -->
-    <div id="screen-laboratorio" class="screen">
-      <div class="flex-between mb-8">
-        <h2 class="section-title" style="margin:0">🧪 Laboratorio</h2>
-        <button class="btn btn-sm btn-primary" onclick="openExtraForm('laboratorio')">＋ Nuevo</button>
-      </div>
-      <p class="text-sm text-muted mb-8">Reactivos, tubos, material de laboratorio (independiente)</p>
-      <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input type="search" id="search-laboratorio" placeholder="Buscar..." oninput="loadExtraList('laboratorio')">
-      </div>
-      <div class="flex gap-8 mb-8">
-        <button class="btn btn-sm btn-secondary" style="flex:1" onclick="openExtraMov('laboratorio','entrada')">＋ Entrada</button>
-        <button class="btn btn-sm btn-secondary" style="flex:1" onclick="openExtraMov('laboratorio','salida')">− Salida</button>
-      </div>
-      <div id="laboratorio-list"></div>
-    </div>
-
-    <!-- VACUNAS -->
-    <div id="screen-vacunas" class="screen">
-      <div class="flex-between mb-8">
-        <h2 class="section-title" style="margin:0">💉 Vacunas</h2>
-        <button class="btn btn-sm btn-primary" onclick="openExtraForm('vacunas')">＋ Nueva</button>
-      </div>
-      <p class="text-sm text-muted mb-8">Registro de vacunas (independiente de medicamentos)</p>
-      <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input type="search" id="search-vacunas" placeholder="Buscar vacuna..." oninput="loadExtraList('vacunas')">
-      </div>
-      <div class="flex gap-8 mb-8">
-        <button class="btn btn-sm btn-secondary" style="flex:1" onclick="openExtraMov('vacunas','entrada')">＋ Entrada</button>
-        <button class="btn btn-sm btn-secondary" style="flex:1" onclick="openExtraMov('vacunas','salida')">− Salida</button>
-      </div>
-      <div id="vacunas-list"></div>
-    </div>
-
     <nav class="bottom-nav">
       <button class="nav-item active" data-screen="dashboard" onclick="navigate('dashboard')">
         <span class="icon">🏠</span>
@@ -229,13 +191,9 @@
         <span class="icon">🩹</span>
         <span>Material</span>
       </button>
-      <button class="nav-item" data-screen="laboratorio" onclick="navigate('laboratorio')">
-        <span class="icon">🧪</span>
-        <span>Lab</span>
-      </button>
-      <button class="nav-item" data-screen="vacunas" onclick="navigate('vacunas')">
-        <span class="icon">💉</span>
-        <span>Vacunas</span>
+      <button class="nav-item" data-screen="usuarios" onclick="navigate('usuarios')">
+        <span class="icon">👥</span>
+        <span>Usuarios</span>
       </button>
     </nav>
   </div>
@@ -753,86 +711,6 @@
           <input type="text" id="mat-mov-obs" placeholder="Opcional">
         </div>
         <p class="text-sm text-muted" id="mat-mov-audit"></p>
-        <button type="submit" class="btn btn-primary">Registrar</button>
-      </form>
-    </div>
-  </div>
-
-
-  <div class="modal-overlay" id="modal-extra">
-    <div class="modal">
-      <div class="modal-header">
-        <h2 id="modal-extra-title">Nuevo</h2>
-        <button class="modal-close" onclick="closeModal('modal-extra')">×</button>
-      </div>
-      <form id="form-extra" onsubmit="saveExtraItem(event)">
-        <input type="hidden" id="extra-id">
-        <input type="hidden" id="extra-modulo" value="laboratorio">
-        <div class="form-group">
-          <label>Nombre *</label>
-          <input type="text" id="extra-nombre" required>
-        </div>
-        <div class="form-group">
-          <label>Categoría / tipo</label>
-          <input type="text" id="extra-categoria" placeholder="Opcional">
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Stock actual</label>
-            <input type="number" id="extra-stock" min="0" value="0">
-          </div>
-          <div class="form-group">
-            <label>Stock mínimo</label>
-            <input type="number" id="extra-stock-minimo" min="0" value="0">
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Ubicación</label>
-          <input type="text" id="extra-ubicacion" placeholder="Nevera, armario…">
-        </div>
-        <div class="form-group">
-          <label>Caducidad</label>
-          <input type="date" id="extra-caducidad">
-        </div>
-        <div class="form-group">
-          <label>Notas</label>
-          <input type="text" id="extra-notas">
-        </div>
-        <div class="form-group">
-          <label>Foto</label>
-          <div class="photo-actions">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="captureExtraPhoto()">📷 Foto</button>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="removeExtraPhoto()">🗑 Quitar</button>
-          </div>
-          <input type="file" id="extra-foto-input" accept="image/*" capture="environment" style="display:none" onchange="handleExtraPhotoSelect(event)">
-          <img id="extra-foto-preview" class="photo-preview" style="display:none;max-width:100%;margin-top:10px;border-radius:12px">
-        </div>
-        <button type="submit" class="btn btn-primary">Guardar</button>
-      </form>
-    </div>
-  </div>
-
-  <div class="modal-overlay" id="modal-extra-mov">
-    <div class="modal">
-      <div class="modal-header">
-        <h2 id="modal-extra-mov-title">Movimiento</h2>
-        <button class="modal-close" onclick="closeModal('modal-extra-mov')">×</button>
-      </div>
-      <form id="form-extra-mov" onsubmit="saveExtraMov(event)">
-        <input type="hidden" id="extra-mov-modulo">
-        <input type="hidden" id="extra-mov-tipo">
-        <div class="form-group">
-          <label>Ítem *</label>
-          <select id="extra-mov-select" required></select>
-        </div>
-        <div class="form-group">
-          <label>Cantidad *</label>
-          <input type="number" id="extra-mov-cantidad" min="1" value="1" required>
-        </div>
-        <div class="form-group">
-          <label>Motivo</label>
-          <input type="text" id="extra-mov-motivo" placeholder="Uso, recepción…">
-        </div>
         <button type="submit" class="btn btn-primary">Registrar</button>
       </form>
     </div>
