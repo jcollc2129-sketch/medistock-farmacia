@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Control de entradas y salidas de medicamentos - Offline">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+  <title>MediStock Farmacia</title>
+</head>
+<body>
+
+  <!-- ========== LOGIN ========== -->
+  <div id="login-screen">
+    <div class="login-card">
+      <h1>💊 MediStock</h1>
+      <p class="subtitle">Control de farmacia · Offline</p>
+      <div id="login-error" class="error-msg"></div>
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label>Usuario</label>
+          <input type="text" id="login-username" required autocomplete="username" placeholder="admin">
+        </div>
+        <div class="form-group">
+          <label>Contraseña</label>
+          <input type="password" id="login-password" required autocomplete="current-password" placeholder="••••••••">
+        </div>
+        <button type="submit" class="btn btn-primary">Entrar</button>
+      </form>
+      <div class="text-center mt-16" style="border-top:1px solid #e2e8f0;padding-top:16px;">
+        <p class="text-sm text-muted mb-8">o entra con tu código QR</p>
+        <button type="button" class="btn btn-secondary w-full" onclick="startLoginQrScanner()">📷 Escanear código QR</button>
+      </div>
+      <p class="text-sm text-muted text-center mt-16">
+        Demo: <strong>admin</strong> / admin123<br>
+        o <strong>operario</strong> / operario123
+      </p>
+    </div>
+  </div>
+
+  <!-- ========== APP ========== -->
+  <div id="app">
+    <header class="header">
+      <div>
+        <h1>💊 MediStock</h1>
+        <div class="user-info" id="header-user"></div>
+      </div>
+      <div class="header-actions" style="flex-direction:column;align-items:flex-end;gap:4px;">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-sm btn-secondary" onclick="manualSync()" title="Sincronizar">☁️</button>
+          <button class="btn btn-sm btn-secondary" onclick="exportBackupFile()" title="Exportar copia">💾</button>
+          <button class="btn btn-sm btn-secondary" onclick="cargarDotacion()" title="Cargar dotación mínima">📋</button>
+          <button class="btn btn-sm btn-secondary" id="btn-header-usuarios" onclick="navigate('usuarios')" title="Usuarios">👥</button>
+          <button class="btn btn-sm btn-secondary" onclick="importBackupFile()" title="Importar copia">📥</button>
+          <button class="btn btn-sm btn-secondary" onclick="logout()" title="Cerrar sesión">Salir</button>
+        </div>
+        <div id="sync-status" class="text-sm" style="font-size:0.7rem;opacity:0.95;">☁️ ...</div>
+      </div>
+    </header>
+
+    <!-- DASHBOARD -->
+    <div id="screen-dashboard" class="screen">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="number" id="stat-meds">0</div>
+          <div class="label">Medicamentos</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="stat-stock">0</div>
+          <div class="label">Stock total</div>
+        </div>
+        <div class="stat-card alert">
+          <div class="number" id="stat-caducados">0</div>
+          <div class="label">Caducados</div>
+        </div>
+        <div class="stat-card warning">
+          <div class="number" id="stat-proximos">0</div>
+          <div class="label">Caducan ≤30d</div>
+        </div>
+      </div>
+
+      <div class="flex gap-12 mb-8">
+        <button class="btn btn-success" style="flex:1" onclick="openMovimiento('entrada')">➕ Entrada</button>
+        <button class="btn btn-danger" style="flex:1" onclick="openMovimiento('salida')">➖ Salida</button>
+      </div>
+
+      <h3 class="section-title">Últimos movimientos</h3>
+      <div class="card" id="recent-movs"></div>
+    </div>
+
+    <!-- INVENTARIO -->
+    <div id="screen-inventario" class="screen">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="search" id="search-inventario" placeholder="Buscar nombre, principio, código, ubicación..." oninput="filterInventario()">
+      </div>
+      <div id="med-list"></div>
+      <button class="fab" onclick="openNuevoMed()" title="Nuevo medicamento">+</button>
+    </div>
+
+    <!-- ALERTAS -->
+    <div id="screen-alertas" class="screen">
+      <h3 class="section-title">⚠️ Alertas de caducidad</h3>
+      <div id="alertas-list"></div>
+    </div>
+
+    <!-- MOVIMIENTOS -->
+    <div id="screen-movimientos" class="screen">
+      <h3 class="section-title">📋 Historial de movimientos</h3>
+      <p class="text-sm text-muted" style="margin:-8px 0 12px;">Registro de control: quién retira o registra, fecha, hora y motivo</p>
+      <div id="movimientos-list"></div>
+    </div>
+
+    <!-- CARGO / NO CARGO -->
+    <div id="screen-cargo" class="screen">
+      <div class="flex gap-8 mb-8" style="padding:0 4px">
+        <button class="btn btn-sm btn-primary" id="btn-filtro-cargo" onclick="setFiltroCargo('cargo')" style="flex:1">📦 Cargo</button>
+        <button class="btn btn-sm btn-secondary" id="btn-filtro-no-cargo" onclick="setFiltroCargo('no_cargo')" style="flex:1">📋 No cargo</button>
+        <button class="btn btn-sm btn-secondary" id="btn-filtro-hosp" onclick="setFiltroCargo('hospitalario')" style="flex:1">🏥 Hosp.</button>
+        <button class="btn btn-sm btn-secondary" id="btn-filtro-estup" onclick="setFiltroCargo('estupefaciente')" style="flex:1">⚠️ Estup.</button>
+        <button class="btn btn-sm btn-secondary" id="btn-filtro-todos" onclick="setFiltroCargo('todos')" style="flex:1">Todos</button>
+      </div>
+      <p class="text-sm text-muted" id="cargo-hint" style="margin:-4px 0 12px">Medicamentos de dotación (cargo) vs no cargo — pedidos por separado</p>
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="search" id="search-cargo" placeholder="Buscar en este listado..." oninput="filterCargoList()">
+      </div>
+      <div id="cargo-list"></div>
+    </div>
+
+
+    <!-- MATERIAL SANITARIO (independiente) -->
+    <div id="screen-material" class="screen">
+      <div class="flex-between mb-8">
+        <h2 class="section-title" style="margin:0">Material sanitario</h2>
+        <button class="btn btn-sm btn-primary" onclick="openMaterialForm()">＋ Nuevo</button>
+      </div>
+      <p class="text-sm text-muted mb-8">Registro independiente de medicamentos (guantes, jeringas, apósitos…)</p>
+      <div class="flex gap-8 mb-8" style="flex-wrap:wrap">
+        <button class="btn btn-sm btn-primary" id="btn-mat-filtro-cargo" onclick="setFiltroMaterial('cargo')" style="flex:1">📦 Cargo</button>
+        <button class="btn btn-sm btn-secondary" id="btn-mat-filtro-no-cargo" onclick="setFiltroMaterial('no_cargo')" style="flex:1">📋 No cargo</button>
+        <button class="btn btn-sm btn-secondary" id="btn-mat-filtro-todos" onclick="setFiltroMaterial('todos')" style="flex:1">Todos</button>
+      </div>
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="search" id="search-material" placeholder="Buscar material..." oninput="loadMaterialList()">
+      </div>
+      <div class="flex gap-8 mb-8">
+        <button class="btn btn-sm btn-secondary" style="flex:1" onclick="openMaterialMovimiento('entrada')">＋ Entrada</button>
+        <button class="btn btn-sm btn-secondary" style="flex:1" onclick="openMaterialMovimiento('salida')">− Salida</button>
+      </div>
+      <div id="material-list"></div>
+      <h3 class="section-title">Últimos movimientos (material)</h3>
+      <div id="material-mov-list"></div>
+    </div>
+
+    <!-- USUARIOS (solo admin) -->
+    <div id="screen-usuarios" class="screen">
+      <div class="flex-between mb-8">
+        <h3 class="section-title" style="margin:0">👥 Usuarios</h3>
+        <button class="btn btn-sm btn-primary" onclick="openNuevoUsuario()">+ Nuevo</button>
+      </div>
+      <div id="usuarios-list"></div>
+    </div>
+
+    <!-- BOTTOM NAV -->
+
+    <!-- LABORATORIO -->
+    <div id="screen-laboratorio" class="screen">
+      <div class="flex-between mb-8">
+        <h2 class="section-title" style="margin:0">🧪 Laboratorio</h2>
+        <button class="btn btn-sm btn-primary" onclick="openExtraForm('laboratorio')">＋ Nuevo</button>
+      </div>
+      <p class="text-sm text-muted mb-8">Reactivos, tubos, material de laboratorio (independiente)</p>
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="search" id="search-laboratorio" placeholder="Buscar..." oninput="loadExtraList('laboratorio')">
+      </div>
+      <div class="flex gap-8 mb-8">
+        <button class="btn btn-sm btn-secondary" style="flex:1" onclick="openExtraMov('laboratorio','entrada')">＋ Entrada</button>
+        <button class="btn btn-sm btn-secondary" style="flex:1" onclick="openExtraMov('laboratorio','salida')">− Salida</button>
+      </div>
+      <div id="laboratorio-list"></div>
+    </div>
+
+    <!-- VACUNAS -->
+    <div id="screen-vacunas" class="screen">
+      <div class="flex-between mb-8">
+        <h2 class="section-title" style="margin:0">💉 Vacunas</h2>
+        <button class="btn btn-sm btn-primary" onclick="openExtraForm('vacunas')">＋ Nueva</button>
+      </div>
+      <p class="text-sm text-muted mb-8">Registro de vacunas (independiente de medicamentos)</p>
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="search" id="search-vacunas" placeholder="Buscar vacuna..." oninput="loadExtraList('vacunas')">
+      </div>
+      <div class="flex gap-8 mb-8">
+        <button class="btn btn-sm btn-secondary" style="flex:1" onclick="openExtraMov('vacunas','entrada')">＋ Entrada</button>
+        <button class="btn btn-sm btn-secondary" style="flex:1" onclick="openExtraMov('vacunas','salida')">− Salida</button>
+      </div>
+      <div id="vacunas-list"></div>
+    </div>
+
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-screen="dashboard" onclick="navigate('dashboard')">
+        <span class="icon">🏠</span>
+        <span>Inicio</span>
+      </button>
+      <button class="nav-item" data-screen="inventario" onclick="navigate('inventario')">
+        <span class="icon">💊</span>
+        <span>Inventario</span>
+      </button>
+      <button class="nav-item" data-screen="alertas" onclick="navigate('alertas')">
+        <span class="icon">⚠️</span>
+        <span>Alertas</span>
+      </button>
+      <button class="nav-item" data-screen="movimientos" onclick="navigate('movimientos')">
+        <span class="icon">📋</span>
+        <span>Historial</span>
+      </button>
+      <button class="nav-item" data-screen="cargo" onclick="navigate('cargo')">
+        <span class="icon">📦</span>
+        <span>Cargo</span>
+      </button>
+      <button class="nav-item" data-screen="material" onclick="navigate('material')">
+        <span class="icon">🩹</span>
+        <span>Material</span>
+      </button>
+      <button class="nav-item" data-screen="laboratorio" onclick="navigate('laboratorio')">
+        <span class="icon">🧪</span>
+        <span>Lab</span>
+      </button>
+      <button class="nav-item" data-screen="vacunas" onclick="navigate('vacunas')">
+        <span class="icon">💉</span>
+        <span>Vacunas</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ========== MODAL DETALLE ========== -->
+  <div id="modal-detalle" class="modal-overlay" onclick="if(event.target===this)closeDetalle()">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="detalle-titulo">—</h2>
+        <button class="modal-close" onclick="closeDetalle()">×</button>
+      </div>
+      <input type="hidden" id="detalle-med-id">
+
+      <img id="detalle-foto" class="photo-preview" style="display:none;max-width:100%;height:auto;">
+
+      <div class="form-group">
+        <label>Principio activo</label>
+        <div id="detalle-principio">—</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Dosis</label>
+          <div id="detalle-dosis">—</div>
+        </div>
+        <div class="form-group">
+          <label>Presentación</label>
+          <div id="detalle-presentacion">—</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Grupo terapéutico</label>
+          <div id="detalle-grupo">—</div>
+        </div>
+        <div class="form-group">
+          <label>Categoría</label>
+          <div id="detalle-categoria">—</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Código de barras</label>
+          <div id="detalle-barcode">—</div>
+        </div>
+        <div class="form-group">
+          <label>Código de registro</label>
+          <div id="detalle-codigo-registro">—</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Ubicación</label>
+          <div id="detalle-ubicacion">—</div>
+        </div>
+        <div class="form-group">
+          <label>Stock mínimo</label>
+          <div id="detalle-stock-minimo">—</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Stock total</label>
+          <div id="detalle-stock" style="font-weight:700;font-size:1.2rem">—</div>
+        </div>
+        <div class="form-group">
+          <label>Tipo de stock</label>
+          <div id="detalle-tipo-stock">—</div>
+        </div>
+      </div>
+
+      <div class="flex gap-8 mt-12">
+        <button class="btn btn-success" style="flex:1" onclick="fromDetalleEntrada()">➕ Entrada</button>
+        <button class="btn btn-danger" style="flex:1" onclick="fromDetalleSalida()">➖ Salida</button>
+        <button class="btn btn-secondary" onclick="openEditarMed()">✏️</button>
+      </div>
+
+      <h3 class="section-title">Lotes</h3>
+      <div id="detalle-lotes"></div>
+
+      <h3 class="section-title">Últimos movimientos</h3>
+      <div id="detalle-movs"></div>
+    </div>
+  </div>
+
+  <!-- ========== MODAL NUEVO/EDITAR MED ========== -->
+  <div id="modal-med" class="modal-overlay" onclick="if(event.target===this)closeModalMed()">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="form-med-title">Nuevo medicamento</h2>
+        <button class="modal-close" onclick="closeModalMed()">×</button>
+      </div>
+
+      <form id="form-med" onsubmit="saveMedicamento(event)">
+        <div class="form-group">
+          <label>Código de barras</label>
+          <div class="flex gap-8">
+            <input type="text" id="med-barcode" placeholder="Escanear o escribir" style="flex:1">
+            <button type="button" class="btn btn-secondary" onclick="startScanner('med-barcode')">📷</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Código de registro</label>
+          <input type="text" id="med-codigo-registro" placeholder="Ej: REG-001">
+        </div>
+
+        <div class="form-group">
+          <label>Nombre comercial</label>
+          <input type="text" id="med-nombre" placeholder="Marca (opcional, se puede poner después)">
+        </div>
+
+        <div class="form-group">
+          <label>Principio activo *</label>
+          <input type="text" id="med-principio" required placeholder="Ej: Paracetamol">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Dosis</label>
+            <input type="text" id="med-dosis" placeholder="Ej: 500 mg">
+          </div>
+          <div class="form-group">
+            <label>Presentación</label>
+            <input type="text" id="med-presentacion" placeholder="Ej: E/20 Comp.">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Grupo terapéutico</label>
+            <input type="text" id="med-grupo" placeholder="Ej: Antibióticos">
+          </div>
+          <div class="form-group">
+            <label>Stock mínimo</label>
+            <input type="number" id="med-stock-minimo" min="0" step="1" placeholder="0" value="0">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Tipo de stock *</label>
+          <select id="med-tipo-stock">
+            <option value="cargo">Cargo (dotación mínima)</option>
+            <option value="no_cargo">No cargo (pedido aparte)</option>
+            <option value="hospitalario">Uso hospitalario</option>
+            <option value="estupefaciente">Estupefaciente</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="med-estupefaciente" style="width:auto">
+            ⚠️ Estupefaciente (exige médico en salidas)
+          </label>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tipo / Categoría</label>
+            <select id="med-categoria">
+              <option value="comprimidos">Comprimidos</option>
+              <option value="capsulas">Cápsulas</option>
+              <option value="ampollas">Ampollas</option>
+              <option value="vial">Vial</option>
+              <option value="jarabe">Jarabe</option>
+              <option value="crema">Crema</option>
+              <option value="otico">Ótico</option>
+              <option value="oftalmologico">Oftalmológico</option>
+              <option value="ovulos">Óvulos</option>
+              <option value="sobres">Sobres</option>
+              <option value="gotas">Gotas</option>
+              <option value="supositorios">Supositorios</option>
+              <option value="otros">Otros</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Ubicación</label>
+            <input type="text" id="med-ubicacion" placeholder="Ej: Estantería A-3">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Notas</label>
+          <textarea id="med-notas" rows="2" placeholder="Observaciones..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Foto del medicamento</label>
+          <div class="photo-actions">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="capturePhoto()">📷 Hacer / Elegir foto</button>
+            <button type="button" class="btn btn-sm btn-danger" onclick="removePhoto()">Eliminar</button>
+          </div>
+          <input type="file" id="med-foto-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoSelect(event)">
+          <img id="med-foto-preview" class="photo-preview" style="display:none">
+        </div>
+
+        <button type="submit" class="btn btn-primary w-full mt-16">Guardar medicamento</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========== MODAL MOVIMIENTO ========== -->
+  <div id="modal-mov" class="modal-overlay" onclick="if(event.target===this)closeModalMov()">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="form-mov-title">Movimiento</h2>
+        <button class="modal-close" onclick="closeModalMov()">×</button>
+      </div>
+
+      <form id="form-mov" onsubmit="saveMovimiento(event)">
+        <input type="hidden" id="mov-tipo">
+        <input type="hidden" id="mov-med-id">
+
+        <div class="form-group">
+          <label>Seleccionar medicamento *</label>
+          <select id="mov-med-select" onchange="onMedSelectChange(this.value)">
+            <option value="">— Elige un medicamento —</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>O escanear / escribir código de barras</label>
+          <div class="flex gap-8">
+            <input type="text" id="mov-barcode" placeholder="Escanear o escribir código" style="flex:1" oninput="lookupBarcodeForMov(this.value)">
+            <button type="button" class="btn btn-secondary" onclick="startScanner('mov-barcode')">📷</button>
+          </div>
+        </div>
+
+        <div id="mov-med-info" style="display:none" class="card mb-8">
+          <strong id="mov-med-nombre">—</strong>
+        </div>
+
+        <!-- Crear medicamento nuevo si no existe (solo en entradas) -->
+        <div id="nuevo-med-group" style="display:none; background:#f8fafc; border-radius:12px; padding:14px; margin-bottom:16px; border:1px dashed #cbd5e1;">
+          <p class="text-sm" style="font-weight:600; margin-bottom:10px;">➕ Medicamento nuevo (rellena estos datos)</p>
+          <div class="form-group">
+            <label>Nombre comercial *</label>
+            <input type="text" id="mov-nuevo-nombre" placeholder="Ej: Paracetamol 1g">
+          </div>
+          <div class="form-group">
+            <label>Principio activo</label>
+            <input type="text" id="mov-nuevo-principio" placeholder="Ej: Paracetamol">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Tipo / Categoría</label>
+              <select id="mov-nuevo-categoria">
+                <option value="comprimidos">Comprimidos</option>
+                <option value="capsulas">Cápsulas</option>
+                <option value="ampollas">Ampollas</option>
+                <option value="vial">Vial</option>
+                <option value="jarabe">Jarabe</option>
+                <option value="crema">Crema</option>
+                <option value="otico">Ótico</option>
+                <option value="oftalmologico">Oftalmológico</option>
+                <option value="ovulos">Óvulos</option>
+                <option value="sobres">Sobres</option>
+                <option value="gotas">Gotas</option>
+                <option value="supositorios">Supositorios</option>
+                <option value="otros">Otros</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Ubicación</label>
+              <input type="text" id="mov-nuevo-ubicacion" placeholder="Ej: Estantería A-3">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Cantidad *</label>
+          <input type="number" id="mov-cantidad" min="1" required placeholder="0">
+        </div>
+
+        <div class="form-group">
+          <label>Lote existente <span class="text-muted text-sm">(opcional)</span></label>
+          <select id="mov-lotes-select" onchange="onLoteSelectChange()">
+            <option value="">— Ninguno / Crear nuevo —</option>
+          </select>
+        </div>
+
+        <div id="nuevo-lote-group">
+          <div class="form-group">
+            <label>Número de lote nuevo <span class="text-muted text-sm">(opcional)</span></label>
+            <input type="text" id="mov-nuevo-lote" placeholder="Ej: Lote 12345 o déjalo vacío">
+          </div>
+          <div class="form-group">
+            <label>Caducidad <span class="text-muted text-sm">(opcional)</span></label>
+            <input type="date" id="mov-nueva-caducidad">
+          </div>
+          <p class="text-sm text-muted" style="margin-top:-8px;margin-bottom:12px;">
+            Si no rellenas lote ni caducidad, se creará automáticamente como “S/N”.
+          </p>
+        </div>
+
+        <div class="form-group">
+          <label id="mov-motivo-label">Motivo *</label>
+          <select id="mov-motivo" required></select>
+        </div>
+
+        <div class="form-group" id="mov-motivo-otro-group" style="display:none">
+          <label>Especificar motivo</label>
+          <input type="text" id="mov-motivo-otro" placeholder="Describe el motivo...">
+        </div>
+
+        <div class="form-group" id="mov-destino-group" style="display:none">
+          <label>Destino *</label>
+          <select id="mov-destino">
+            <option value="">— Elige destino —</option>
+            <option value="Consulta">Consulta</option>
+            <option value="Carro de parada triaje">Carro de parada triaje</option>
+            <option value="Carro de parada UCI">Carro de parada UCI</option>
+            <option value="Quirófano 1">Quirófano 1</option>
+            <option value="Quirófano 2">Quirófano 2</option>
+            <option value="Mochilas SVA">Mochilas SVA</option>
+            <option value="UCI">UCI</option>
+            <option value="Otro destino">Otro destino</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="mov-destino-otro-group" style="display:none">
+          <label>Especificar destino</label>
+          <input type="text" id="mov-destino-otro" placeholder="Indica el destino...">
+        </div>
+
+        <div class="form-group" id="mov-medico-group" style="display:none">
+          <label>⚠️ Médico solicitante (estupefaciente) *</label>
+          <input type="text" id="mov-medico" placeholder="Nombre y apellidos del médico">
+          <p class="text-sm text-muted" style="margin-top:4px">Obligatorio al retirar estupefacientes</p>
+        </div>
+
+        <div class="form-group">
+          <label>Observaciones</label>
+          <input type="text" id="mov-observaciones" placeholder="Opcional: nota adicional...">
+        </div>
+
+        <p class="text-sm text-muted" id="mov-audit-hint" style="margin-bottom:12px;">
+          Quedará registrado quién realiza el movimiento, con fecha y hora.
+        </p>
+
+        <button type="submit" class="btn btn-primary w-full mt-16">Registrar movimiento</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========== MODAL USUARIO ========== -->
+  <div id="modal-user" class="modal-overlay" onclick="if(event.target===this)closeModalUser()">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Nuevo usuario</h2>
+        <button class="modal-close" onclick="closeModalUser()">×</button>
+      </div>
+      <form id="form-user" onsubmit="saveUsuario(event)">
+        <div class="form-group">
+          <label>Nombre completo</label>
+          <input type="text" id="user-nombre" required>
+        </div>
+        <div class="form-group">
+          <label>Usuario</label>
+          <input type="text" id="user-username" required>
+        </div>
+        <div class="form-group">
+          <label>Contraseña</label>
+          <input type="password" id="user-password" required>
+        </div>
+        <div class="form-group">
+          <label>Rol</label>
+          <select id="user-rol">
+            <option value="operario">Operario</option>
+            <option value="admin">Administrador</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary w-full">Crear usuario</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- SCANNER GLOBAL (outside modals for reliability) -->
+  <div id="scanner-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:400;flex-direction:column;align-items:center;justify-content:center;padding:20px;">
+    <div id="scanner-container" style="width:100%;max-width:360px;border-radius:12px;overflow:hidden;"></div>
+    <button class="btn btn-danger mt-16" onclick="stopScanner()" style="margin-top:20px;">Cerrar cámara</button>
+  </div>
+
+
+  <!-- ========== MODAL QR USUARIO ========== -->
+  <div id="modal-qr-user" class="modal-overlay" onclick="if(event.target===this)closeModalQrUser()">
+    <div class="modal" style="text-align:center;">
+      <div class="modal-header">
+        <h2 id="qr-user-title">Código QR de acceso</h2>
+        <button class="modal-close" onclick="closeModalQrUser()">×</button>
+      </div>
+      <p class="text-sm text-muted mb-8" id="qr-user-subtitle">Escanea este código para entrar sin contraseña</p>
+      <div id="qr-user-canvas" style="display:flex;justify-content:center;margin:16px 0;"></div>
+      <p class="text-sm" style="font-family:monospace;letter-spacing:2px;" id="qr-user-token"></p>
+      <p class="text-sm text-muted mt-12">Cada usuario tiene su propio código. Compártelo solo con esa persona.</p>
+      <button type="button" class="btn btn-secondary w-full mt-16" onclick="closeModalQrUser()">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="db.js"></script>
+  <script src="dotacion.js"></script>
+  <script src="material_catalog.js"></script>
+  <script src="sync.js"></script>
+  <script src="app.js"></script>
+
+  <!-- Modal material -->
+  <div class="modal-overlay" id="modal-material">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-material-title">Nuevo material</h2>
+        <button class="modal-close" onclick="closeModal('modal-material')">×</button>
+      </div>
+      <form id="form-material" onsubmit="saveMaterial(event)">
+        <input type="hidden" id="mat-id">
+        <div class="form-group">
+          <label>Nombre del producto *</label>
+          <input type="text" id="mat-nombre" required placeholder="Ej. Guantes nitrilo M">
+        </div>
+        <div class="form-group">
+          <label>Código de registro</label>
+          <input type="text" id="mat-codigo-registro" placeholder="Ej: REG-001">
+        </div>
+        <div class="form-group">
+          <label>Tipo de stock *</label>
+          <select id="mat-tipo-stock">
+            <option value="cargo">Cargo (dotación)</option>
+            <option value="no_cargo">No cargo (pedido aparte)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Categoría</label>
+          <select id="mat-categoria">
+            <option value="guantes">Guantes</option>
+            <option value="jeringas">Jeringas / agujas</option>
+            <option value="apositos">Apósitos / apósitos</option>
+            <option value="sondas">Sondas / catéteres</option>
+            <option value="suero">Sistemas suero / llaves</option>
+            <option value="mascarillas">Mascarillas / EPIs</option>
+            <option value="gasas">Gasas / algodón</option>
+            <option value="suturas">Suturas</option>
+            <option value="otros">Otros</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Referencia / código</label>
+            <input type="text" id="mat-referencia" placeholder="Ref. proveedor">
+          </div>
+          <div class="form-group">
+            <label>Código de barras</label>
+            <input type="text" id="mat-barcode" placeholder="Opcional">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Stock mínimo</label>
+            <input type="number" id="mat-stock-minimo" min="0" value="0">
+          </div>
+          <div class="form-group">
+            <label>Ubicación</label>
+            <input type="text" id="mat-ubicacion" placeholder="Estantería, carro, armario…">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Notas</label>
+          <input type="text" id="mat-notas" placeholder="Opcional">
+        </div>
+
+        <div class="form-group">
+          <label>Foto del material</label>
+          <div class="photo-actions">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="captureMaterialPhoto()">📷 Hacer / Elegir foto</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="removeMaterialPhoto()">🗑 Quitar</button>
+          </div>
+          <input type="file" id="mat-foto-input" accept="image/*" capture="environment" style="display:none" onchange="handleMaterialPhotoSelect(event)">
+          <img id="mat-foto-preview" class="photo-preview" style="display:none;max-width:100%;margin-top:10px;border-radius:12px">
+        </div>
+
+        <button type="submit" class="btn btn-primary">Guardar cambios</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal movimiento material -->
+  <div class="modal-overlay" id="modal-mat-mov">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-mat-mov-title">Movimiento material</h2>
+        <button class="modal-close" onclick="closeModal('modal-mat-mov')">×</button>
+      </div>
+      <form id="form-mat-mov" onsubmit="saveMaterialMovimiento(event)">
+        <input type="hidden" id="mat-mov-tipo" value="entrada">
+        <div class="form-group">
+          <label>Material *</label>
+          <select id="mat-mov-select" required></select>
+        </div>
+        <div class="form-group">
+          <label>Cantidad *</label>
+          <input type="number" id="mat-mov-cantidad" min="1" step="1" required value="1">
+        </div>
+        <div class="form-group" id="mat-mov-lote-group">
+          <label>Nº lote</label>
+          <input type="text" id="mat-mov-lote" placeholder="S/N si no aplica">
+        </div>
+        <div class="form-group" id="mat-mov-cad-group">
+          <label>Caducidad</label>
+          <input type="date" id="mat-mov-caducidad">
+        </div>
+        <div class="form-group" id="mat-mov-lotes-exist-group" style="display:none">
+          <label>Lote existente *</label>
+          <select id="mat-mov-lotes-select"></select>
+        </div>
+        <div class="form-group">
+          <label>Motivo</label>
+          <select id="mat-mov-motivo">
+            <option value="Recepción / compra">Recepción / compra</option>
+            <option value="Uso">Uso</option>
+            <option value="Caducado">Caducado</option>
+            <option value="Rotura / deterioro">Rotura / deterioro</option>
+            <option value="Ajuste inventario">Ajuste inventario</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Observaciones</label>
+          <input type="text" id="mat-mov-obs" placeholder="Opcional">
+        </div>
+        <p class="text-sm text-muted" id="mat-mov-audit"></p>
+        <button type="submit" class="btn btn-primary">Registrar</button>
+      </form>
+    </div>
+  </div>
+
+
+  <div class="modal-overlay" id="modal-extra">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-extra-title">Nuevo</h2>
+        <button class="modal-close" onclick="closeModal('modal-extra')">×</button>
+      </div>
+      <form id="form-extra" onsubmit="saveExtraItem(event)">
+        <input type="hidden" id="extra-id">
+        <input type="hidden" id="extra-modulo" value="laboratorio">
+        <div class="form-group">
+          <label>Nombre *</label>
+          <input type="text" id="extra-nombre" required>
+        </div>
+        <div class="form-group">
+          <label>Código de registro</label>
+          <input type="text" id="extra-codigo-registro" placeholder="Ej: REG-001">
+        </div>
+        <div class="form-group">
+          <label>Categoría / tipo</label>
+          <input type="text" id="extra-categoria" placeholder="Opcional">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Stock actual</label>
+            <input type="number" id="extra-stock" min="0" value="0">
+          </div>
+          <div class="form-group">
+            <label>Stock mínimo</label>
+            <input type="number" id="extra-stock-minimo" min="0" value="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Ubicación</label>
+          <input type="text" id="extra-ubicacion" placeholder="Nevera, armario…">
+        </div>
+        <div class="form-group">
+          <label>Caducidad</label>
+          <input type="date" id="extra-caducidad">
+        </div>
+        <div class="form-group">
+          <label>Notas</label>
+          <input type="text" id="extra-notas">
+        </div>
+        <div class="form-group">
+          <label>Foto</label>
+          <div class="photo-actions">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="captureExtraPhoto()">📷 Foto</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="removeExtraPhoto()">🗑 Quitar</button>
+          </div>
+          <input type="file" id="extra-foto-input" accept="image/*" capture="environment" style="display:none" onchange="handleExtraPhotoSelect(event)">
+          <img id="extra-foto-preview" class="photo-preview" style="display:none;max-width:100%;margin-top:10px;border-radius:12px">
+        </div>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-extra-mov">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-extra-mov-title">Movimiento</h2>
+        <button class="modal-close" onclick="closeModal('modal-extra-mov')">×</button>
+      </div>
+      <form id="form-extra-mov" onsubmit="saveExtraMov(event)">
+        <input type="hidden" id="extra-mov-modulo">
+        <input type="hidden" id="extra-mov-tipo">
+        <div class="form-group">
+          <label>Ítem *</label>
+          <select id="extra-mov-select" required></select>
+        </div>
+        <div class="form-group">
+          <label>Cantidad *</label>
+          <input type="number" id="extra-mov-cantidad" min="1" value="1" required>
+        </div>
+        <div class="form-group">
+          <label>Motivo</label>
+          <input type="text" id="extra-mov-motivo" placeholder="Uso, recepción…">
+        </div>
+        <button type="submit" class="btn btn-primary">Registrar</button>
+      </form>
+    </div>
+  </div>
+
+</body>
+</html>
