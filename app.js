@@ -1,7 +1,8 @@
 // MediStock Farmacia - Main Application
 let currentUser = null;
 let html5QrCode = null;
-let currentPhoto = null;
+let currentPhoto;
+let currentMaterialPhoto = null;
 let editingMedId = null;
 
 // ========== INIT ==========
@@ -51,7 +52,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     if (typeof seedMaterialIfEmpty === 'function') {
       const sm = await seedMaterialIfEmpty();
-      if (sm.seeded) console.log('Material sanitario:', sm.count);
+      if (sm.seeded) console.log('Material cargo:', sm.count);
+    }
+    if (typeof seedMaterialNoCargoIfEmpty === 'function') {
+      const sm2 = await seedMaterialNoCargoIfEmpty();
+      if (sm2.seeded) console.log('Material no cargo:', sm2.count);
     }
   } catch (err) { console.warn(err); }
   checkSession();
@@ -174,6 +179,10 @@ async function showApp() {
   }
   updateSyncStatus(navigator.onLine);
   navigate('dashboard');
+
+  const btnUsers = document.getElementById('btn-header-usuarios');
+  if (btnUsers) btnUsers.style.display = (currentUser && currentUser.rol === 'admin') ? 'inline-flex' : 'none';
+
 }
 
 // ========== NAVIGATION ==========
@@ -195,6 +204,11 @@ function navigate(screen) {
   if (screen === 'movimientos') loadMovimientos();
   if (screen === 'cargo') loadCargoList();
   if (screen === 'material') { loadMaterialList(); loadMaterialMovimientos(); }
+  if (screen === 'laboratorio') loadExtraList('laboratorio');
+  if (screen === 'vacunas') loadExtraList('vacunas');
+  if (screen === 'usuarios') {
+    const btn = document.getElementById('btn-header-usuarios');
+  }
 }
 
 // ========== DASHBOARD ==========
@@ -1281,7 +1295,8 @@ async function cargarDotacion() {
   const n3 = await importarHospitalarioFaltante();
   const n4 = await importarEstupefacientesFaltante();
   const n5 = typeof importarMaterialFaltante === 'function' ? await importarMaterialFaltante() : 0;
-  showToast(`Catálogos: +${n} cargo, +${n2} no cargo, +${n3} hosp., +${n4} estupef., +${n5} material`);
+  const n6 = typeof importarMaterialNoCargoFaltante === 'function' ? await importarMaterialNoCargoFaltante() : 0;
+  showToast(`Catálogos: med ${n}+${n2}, hosp ${n3}, estup ${n4}, mat ${n5}+${n6}`);
   scheduleSync();
   loadInventario();
   loadDashboard();
@@ -1387,7 +1402,8 @@ async function cargarCatalogos() {
   const n3 = await importarHospitalarioFaltante();
   const n4 = await importarEstupefacientesFaltante();
   const n5 = typeof importarMaterialFaltante === 'function' ? await importarMaterialFaltante() : 0;
-  showToast(`Añadidos: ${n1} cargo, ${n2} no cargo, ${n3} hosp., ${n4} estupef., ${n5} material`);
+  const n6 = typeof importarMaterialNoCargoFaltante === 'function' ? await importarMaterialNoCargoFaltante() : 0;
+  showToast(`Añadidos: ${n1}/${n2} med, ${n3} hosp, ${n4} estup, mat ${n5}+${n6}`);
   scheduleSync();
   loadCargoList();
   loadInventario();
@@ -1427,9 +1443,31 @@ document.addEventListener('change', (e) => {
 
 
 // ========== MATERIAL SANITARIO ==========
+let filtroMaterialActual = 'cargo';
+
+function setFiltroMaterial(tipo) {
+  filtroMaterialActual = tipo;
+  const map = { cargo: 'btn-mat-filtro-cargo', no_cargo: 'btn-mat-filtro-no-cargo', todos: 'btn-mat-filtro-todos' };
+  Object.keys(map).forEach(t => {
+    const btn = document.getElementById(map[t]);
+    if (!btn) return;
+    btn.className = 'btn btn-sm ' + (filtroMaterialActual === t ? 'btn-primary' : 'btn-secondary');
+    btn.style.flex = '1';
+  });
+  loadMaterialList();
+}
+
 function openMaterialForm(id) {
   document.getElementById('form-material').reset();
   document.getElementById('mat-id').value = '';
+  currentMaterialPhoto = null;
+  const preview = document.getElementById('mat-foto-preview');
+  if (preview) {
+    preview.src = '';
+    preview.style.display = 'none';
+  }
+  const finput = document.getElementById('mat-foto-input');
+  if (finput) finput.value = '';
   document.getElementById('modal-material-title').textContent = 'Nuevo material';
   if (id) {
     getMaterialById(id).then(m => {
@@ -1437,12 +1475,19 @@ function openMaterialForm(id) {
       document.getElementById('mat-id').value = m.id;
       document.getElementById('mat-nombre').value = m.nombre || '';
       document.getElementById('mat-categoria').value = m.categoria || 'otros';
+      const mts = document.getElementById('mat-tipo-stock');
+      if (mts) mts.value = m.tipoStock || 'cargo';
       document.getElementById('mat-referencia').value = m.referencia || '';
       document.getElementById('mat-barcode').value = m.barcode || '';
       document.getElementById('mat-stock-minimo').value = m.stockMinimo != null ? m.stockMinimo : 0;
       document.getElementById('mat-ubicacion').value = m.ubicacion || '';
       document.getElementById('mat-notas').value = m.notas || '';
-      document.getElementById('modal-material-title').textContent = 'Editar material';
+      currentMaterialPhoto = m.foto || null;
+      if (preview && m.foto) {
+        preview.src = m.foto;
+        preview.style.display = 'block';
+      }
+      document.getElementById('modal-material-title').textContent = 'Ficha del material';
     });
   }
   openModal('modal-material');
@@ -1454,11 +1499,13 @@ async function saveMaterial(e) {
   const data = {
     nombre: (document.getElementById('mat-nombre').value || '').trim(),
     categoria: document.getElementById('mat-categoria').value || 'otros',
+    tipoStock: (document.getElementById('mat-tipo-stock') || {}).value || 'cargo',
     referencia: (document.getElementById('mat-referencia').value || '').trim() || null,
     barcode: (document.getElementById('mat-barcode').value || '').trim() || null,
     stockMinimo: parseInt(document.getElementById('mat-stock-minimo').value) || 0,
     ubicacion: (document.getElementById('mat-ubicacion').value || '').trim() || null,
     notas: (document.getElementById('mat-notas').value || '').trim() || null,
+    foto: currentMaterialPhoto || null,
     updatedAt: new Date().toISOString()
   };
   if (!data.nombre) {
@@ -1484,8 +1531,13 @@ async function loadMaterialList() {
   const list = await getMateriales();
   const q = ((document.getElementById('search-material') || {}).value || '').toLowerCase().trim();
   let filtered = list;
+  if (filtroMaterialActual === 'cargo') {
+    filtered = list.filter(m => (m.tipoStock || 'cargo') === 'cargo');
+  } else if (filtroMaterialActual === 'no_cargo') {
+    filtered = list.filter(m => m.tipoStock === 'no_cargo');
+  }
   if (q) {
-    filtered = list.filter(m =>
+    filtered = filtered.filter(m =>
       (m.nombre || '').toLowerCase().includes(q) ||
       (m.categoria || '').toLowerCase().includes(q) ||
       (m.referencia || '').toLowerCase().includes(q)
@@ -1505,12 +1557,15 @@ async function loadMaterialList() {
     const bajo = min > 0 && stock < min;
     html += `
       <div class="card med-item" onclick="openMaterialForm(${m.id})">
-        <div class="med-photo placeholder">🩹</div>
+        ${m.foto
+          ? `<img class="med-photo" src="${m.foto}" alt="">`
+          : `<div class="med-photo placeholder">🩹</div>`}
         <div class="med-info">
           <div class="name">${escapeHtml(m.nombre)}</div>
           <div class="principio">${escapeHtml(m.categoria || '')}${m.referencia ? ' · Ref. ' + escapeHtml(m.referencia) : ''}</div>
           <div class="meta">
             <span class="badge ${bajo ? 'badge-bajo' : 'badge-stock'}">${stock}${min > 0 ? '/' + min : ''} uds</span>
+            <span class="badge ${m.tipoStock === 'no_cargo' ? 'badge-no-cargo' : 'badge-cargo'}">${m.tipoStock === 'no_cargo' ? 'No cargo' : 'Cargo'}</span>
             ${m.ubicacion ? ' · 📍 ' + escapeHtml(m.ubicacion) : ''}
           </div>
         </div>
@@ -1656,7 +1711,220 @@ async function cargarMaterialDotacion() {
   }
   showToast('Cargando dotación de material...');
   const n = await importarMaterialFaltante();
-  showToast(n > 0 ? ('Añadidos ' + n + ' materiales') : 'La dotación de material ya estaba completa');
+  const n2 = typeof importarMaterialNoCargoFaltante === 'function' ? await importarMaterialNoCargoFaltante() : 0;
+  showToast(`Material: +${n} cargo, +${n2} no cargo`);
   scheduleSync();
   loadMaterialList();
+}
+
+
+function captureMaterialPhoto() {
+  const input = document.getElementById('mat-foto-input');
+  if (input) input.click();
+}
+
+function handleMaterialPhotoSelect(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const maxW = 600;
+      let w = img.width;
+      let h = img.height;
+      if (w > maxW) {
+        h = (h * maxW) / w;
+        w = maxW;
+      }
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      currentMaterialPhoto = canvas.toDataURL('image/jpeg', 0.7);
+      const preview = document.getElementById('mat-foto-preview');
+      if (preview) {
+        preview.src = currentMaterialPhoto;
+        preview.style.display = 'block';
+      }
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeMaterialPhoto() {
+  currentMaterialPhoto = null;
+  const preview = document.getElementById('mat-foto-preview');
+  if (preview) {
+    preview.src = '';
+    preview.style.display = 'none';
+  }
+  const input = document.getElementById('mat-foto-input');
+  if (input) input.value = '';
+}
+
+
+// ========== LABORATORIO / VACUNAS ==========
+let currentExtraPhoto = null;
+
+function openExtraForm(modulo, id) {
+  document.getElementById('form-extra').reset();
+  document.getElementById('extra-id').value = '';
+  document.getElementById('extra-modulo').value = modulo;
+  currentExtraPhoto = null;
+  const preview = document.getElementById('extra-foto-preview');
+  if (preview) { preview.src = ''; preview.style.display = 'none'; }
+  const titles = { laboratorio: 'Laboratorio', vacunas: 'Vacuna' };
+  document.getElementById('modal-extra-title').textContent = id ? 'Editar ' + (titles[modulo] || '') : 'Nuevo · ' + (titles[modulo] || '');
+  if (id) {
+    getExtraItemById(modulo, id).then(item => {
+      if (!item) return;
+      document.getElementById('extra-id').value = item.id;
+      document.getElementById('extra-nombre').value = item.nombre || '';
+      document.getElementById('extra-categoria').value = item.categoria || '';
+      document.getElementById('extra-stock').value = item.stock != null ? item.stock : 0;
+      document.getElementById('extra-stock-minimo').value = item.stockMinimo != null ? item.stockMinimo : 0;
+      document.getElementById('extra-ubicacion').value = item.ubicacion || '';
+      document.getElementById('extra-caducidad').value = item.caducidad || '';
+      document.getElementById('extra-notas').value = item.notas || '';
+      currentExtraPhoto = item.foto || null;
+      if (preview && item.foto) { preview.src = item.foto; preview.style.display = 'block'; }
+    });
+  }
+  openModal('modal-extra');
+}
+
+async function saveExtraItem(e) {
+  e.preventDefault();
+  const modulo = document.getElementById('extra-modulo').value;
+  const id = document.getElementById('extra-id').value;
+  const data = {
+    nombre: (document.getElementById('extra-nombre').value || '').trim(),
+    categoria: (document.getElementById('extra-categoria').value || '').trim() || null,
+    stock: parseInt(document.getElementById('extra-stock').value) || 0,
+    stockMinimo: parseInt(document.getElementById('extra-stock-minimo').value) || 0,
+    ubicacion: (document.getElementById('extra-ubicacion').value || '').trim() || null,
+    caducidad: document.getElementById('extra-caducidad').value || null,
+    notas: (document.getElementById('extra-notas').value || '').trim() || null,
+    foto: currentExtraPhoto || null,
+    updatedAt: new Date().toISOString()
+  };
+  if (!data.nombre) { showToast('Indica el nombre'); return; }
+  if (id) {
+    const existing = await getExtraItemById(modulo, Number(id));
+    Object.assign(existing, data);
+    await updateExtraItem(modulo, existing);
+    showToast('Actualizado');
+  } else {
+    data.createdAt = new Date().toISOString();
+    await addExtraItem(modulo, data);
+    showToast('Creado');
+  }
+  closeModal('modal-extra');
+  scheduleSync();
+  loadExtraList(modulo);
+}
+
+async function loadExtraList(modulo) {
+  const el = document.getElementById(modulo + '-list');
+  if (!el) return;
+  const list = await getExtraItems(modulo);
+  const q = ((document.getElementById('search-' + modulo) || {}).value || '').toLowerCase().trim();
+  let filtered = list;
+  if (q) filtered = list.filter(i => (i.nombre || '').toLowerCase().includes(q) || (i.categoria || '').toLowerCase().includes(q));
+  filtered.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+  if (!filtered.length) {
+    el.innerHTML = `<div class="empty-state"><div class="icon">${modulo === 'vacunas' ? '💉' : '🧪'}</div>Sin registros<br><button class="btn btn-primary mt-16" onclick="openExtraForm('${modulo}')">Añadir</button></div>`;
+    return;
+  }
+  const icon = modulo === 'vacunas' ? '💉' : '🧪';
+  let html = '';
+  for (const m of filtered) {
+    const stock = m.stock != null ? m.stock : 0;
+    const min = m.stockMinimo || 0;
+    const bajo = min > 0 && stock < min;
+    html += `<div class="card med-item" onclick="openExtraForm('${modulo}', ${m.id})">
+      ${m.foto ? `<img class="med-photo" src="${m.foto}" alt="">` : `<div class="med-photo placeholder">${icon}</div>`}
+      <div class="med-info">
+        <div class="name">${escapeHtml(m.nombre)}</div>
+        <div class="principio">${escapeHtml(m.categoria || '')}${m.caducidad ? ' · Cad. ' + escapeHtml(m.caducidad) : ''}</div>
+        <div class="meta">
+          <span class="badge ${bajo ? 'badge-bajo' : 'badge-stock'}">${stock}${min > 0 ? '/' + min : ''} uds</span>
+          ${m.ubicacion ? ' · 📍 ' + escapeHtml(m.ubicacion) : ''}
+        </div>
+      </div>
+    </div>`;
+  }
+  el.innerHTML = html;
+}
+
+async function openExtraMov(modulo, tipo) {
+  document.getElementById('extra-mov-modulo').value = modulo;
+  document.getElementById('extra-mov-tipo').value = tipo;
+  document.getElementById('modal-extra-mov-title').textContent = (tipo === 'entrada' ? 'Entrada' : 'Salida') + ' · ' + (modulo === 'vacunas' ? 'Vacunas' : 'Lab');
+  document.getElementById('extra-mov-cantidad').value = '1';
+  document.getElementById('extra-mov-motivo').value = tipo === 'entrada' ? 'Recepción' : 'Uso';
+  const items = await getExtraItems(modulo);
+  items.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+  document.getElementById('extra-mov-select').innerHTML =
+    '<option value="">— Elegir —</option>' + items.map(i => `<option value="${i.id}">${escapeHtml(i.nombre)} (${i.stock || 0})</option>`).join('');
+  openModal('modal-extra-mov');
+}
+
+async function saveExtraMov(e) {
+  e.preventDefault();
+  const modulo = document.getElementById('extra-mov-modulo').value;
+  const tipo = document.getElementById('extra-mov-tipo').value;
+  const id = parseInt(document.getElementById('extra-mov-select').value);
+  const cantidad = parseInt(document.getElementById('extra-mov-cantidad').value);
+  if (!id || !cantidad) { showToast('Completa los datos'); return; }
+  const item = await getExtraItemById(modulo, id);
+  if (!item) return;
+  let stock = item.stock != null ? item.stock : 0;
+  if (tipo === 'entrada') stock += cantidad;
+  else {
+    if (stock < cantidad) { showToast('Stock insuficiente'); return; }
+    stock -= cantidad;
+  }
+  item.stock = stock;
+  item.updatedAt = new Date().toISOString();
+  await updateExtraItem(modulo, item);
+  showToast(tipo === 'entrada' ? 'Entrada registrada' : 'Salida registrada');
+  closeModal('modal-extra-mov');
+  scheduleSync();
+  loadExtraList(modulo);
+}
+
+function captureExtraPhoto() {
+  const input = document.getElementById('extra-foto-input');
+  if (input) input.click();
+}
+function handleExtraPhotoSelect(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const maxW = 600;
+      let w = img.width, h = img.height;
+      if (w > maxW) { h = (h * maxW) / w; w = maxW; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      currentExtraPhoto = canvas.toDataURL('image/jpeg', 0.7);
+      const preview = document.getElementById('extra-foto-preview');
+      if (preview) { preview.src = currentExtraPhoto; preview.style.display = 'block'; }
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function removeExtraPhoto() {
+  currentExtraPhoto = null;
+  const preview = document.getElementById('extra-foto-preview');
+  if (preview) { preview.src = ''; preview.style.display = 'none'; }
+  const input = document.getElementById('extra-foto-input');
+  if (input) input.value = '';
 }
