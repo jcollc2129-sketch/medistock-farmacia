@@ -179,6 +179,10 @@ async function showApp() {
   }
   updateSyncStatus(navigator.onLine);
   navigate('dashboard');
+
+  const btnUsers = document.getElementById('btn-header-usuarios');
+  if (btnUsers) btnUsers.style.display = (currentUser && currentUser.rol === 'admin') ? 'inline-flex' : 'none';
+
 }
 
 // ========== NAVIGATION ==========
@@ -200,6 +204,11 @@ function navigate(screen) {
   if (screen === 'movimientos') loadMovimientos();
   if (screen === 'cargo') loadCargoList();
   if (screen === 'material') { loadMaterialList(); loadMaterialMovimientos(); }
+  if (screen === 'laboratorio') loadExtraList('laboratorio');
+  if (screen === 'vacunas') loadExtraList('vacunas');
+  if (screen === 'usuarios') {
+    const btn = document.getElementById('btn-header-usuarios');
+  }
 }
 
 // ========== DASHBOARD ==========
@@ -1752,5 +1761,170 @@ function removeMaterialPhoto() {
     preview.style.display = 'none';
   }
   const input = document.getElementById('mat-foto-input');
+  if (input) input.value = '';
+}
+
+
+// ========== LABORATORIO / VACUNAS ==========
+let currentExtraPhoto = null;
+
+function openExtraForm(modulo, id) {
+  document.getElementById('form-extra').reset();
+  document.getElementById('extra-id').value = '';
+  document.getElementById('extra-modulo').value = modulo;
+  currentExtraPhoto = null;
+  const preview = document.getElementById('extra-foto-preview');
+  if (preview) { preview.src = ''; preview.style.display = 'none'; }
+  const titles = { laboratorio: 'Laboratorio', vacunas: 'Vacuna' };
+  document.getElementById('modal-extra-title').textContent = id ? 'Editar ' + (titles[modulo] || '') : 'Nuevo · ' + (titles[modulo] || '');
+  if (id) {
+    getExtraItemById(modulo, id).then(item => {
+      if (!item) return;
+      document.getElementById('extra-id').value = item.id;
+      document.getElementById('extra-nombre').value = item.nombre || '';
+      document.getElementById('extra-categoria').value = item.categoria || '';
+      document.getElementById('extra-stock').value = item.stock != null ? item.stock : 0;
+      document.getElementById('extra-stock-minimo').value = item.stockMinimo != null ? item.stockMinimo : 0;
+      document.getElementById('extra-ubicacion').value = item.ubicacion || '';
+      document.getElementById('extra-caducidad').value = item.caducidad || '';
+      document.getElementById('extra-notas').value = item.notas || '';
+      currentExtraPhoto = item.foto || null;
+      if (preview && item.foto) { preview.src = item.foto; preview.style.display = 'block'; }
+    });
+  }
+  openModal('modal-extra');
+}
+
+async function saveExtraItem(e) {
+  e.preventDefault();
+  const modulo = document.getElementById('extra-modulo').value;
+  const id = document.getElementById('extra-id').value;
+  const data = {
+    nombre: (document.getElementById('extra-nombre').value || '').trim(),
+    categoria: (document.getElementById('extra-categoria').value || '').trim() || null,
+    stock: parseInt(document.getElementById('extra-stock').value) || 0,
+    stockMinimo: parseInt(document.getElementById('extra-stock-minimo').value) || 0,
+    ubicacion: (document.getElementById('extra-ubicacion').value || '').trim() || null,
+    caducidad: document.getElementById('extra-caducidad').value || null,
+    notas: (document.getElementById('extra-notas').value || '').trim() || null,
+    foto: currentExtraPhoto || null,
+    updatedAt: new Date().toISOString()
+  };
+  if (!data.nombre) { showToast('Indica el nombre'); return; }
+  if (id) {
+    const existing = await getExtraItemById(modulo, Number(id));
+    Object.assign(existing, data);
+    await updateExtraItem(modulo, existing);
+    showToast('Actualizado');
+  } else {
+    data.createdAt = new Date().toISOString();
+    await addExtraItem(modulo, data);
+    showToast('Creado');
+  }
+  closeModal('modal-extra');
+  scheduleSync();
+  loadExtraList(modulo);
+}
+
+async function loadExtraList(modulo) {
+  const el = document.getElementById(modulo + '-list');
+  if (!el) return;
+  const list = await getExtraItems(modulo);
+  const q = ((document.getElementById('search-' + modulo) || {}).value || '').toLowerCase().trim();
+  let filtered = list;
+  if (q) filtered = list.filter(i => (i.nombre || '').toLowerCase().includes(q) || (i.categoria || '').toLowerCase().includes(q));
+  filtered.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+  if (!filtered.length) {
+    el.innerHTML = `<div class="empty-state"><div class="icon">${modulo === 'vacunas' ? '💉' : '🧪'}</div>Sin registros<br><button class="btn btn-primary mt-16" onclick="openExtraForm('${modulo}')">Añadir</button></div>`;
+    return;
+  }
+  const icon = modulo === 'vacunas' ? '💉' : '🧪';
+  let html = '';
+  for (const m of filtered) {
+    const stock = m.stock != null ? m.stock : 0;
+    const min = m.stockMinimo || 0;
+    const bajo = min > 0 && stock < min;
+    html += `<div class="card med-item" onclick="openExtraForm('${modulo}', ${m.id})">
+      ${m.foto ? `<img class="med-photo" src="${m.foto}" alt="">` : `<div class="med-photo placeholder">${icon}</div>`}
+      <div class="med-info">
+        <div class="name">${escapeHtml(m.nombre)}</div>
+        <div class="principio">${escapeHtml(m.categoria || '')}${m.caducidad ? ' · Cad. ' + escapeHtml(m.caducidad) : ''}</div>
+        <div class="meta">
+          <span class="badge ${bajo ? 'badge-bajo' : 'badge-stock'}">${stock}${min > 0 ? '/' + min : ''} uds</span>
+          ${m.ubicacion ? ' · 📍 ' + escapeHtml(m.ubicacion) : ''}
+        </div>
+      </div>
+    </div>`;
+  }
+  el.innerHTML = html;
+}
+
+async function openExtraMov(modulo, tipo) {
+  document.getElementById('extra-mov-modulo').value = modulo;
+  document.getElementById('extra-mov-tipo').value = tipo;
+  document.getElementById('modal-extra-mov-title').textContent = (tipo === 'entrada' ? 'Entrada' : 'Salida') + ' · ' + (modulo === 'vacunas' ? 'Vacunas' : 'Lab');
+  document.getElementById('extra-mov-cantidad').value = '1';
+  document.getElementById('extra-mov-motivo').value = tipo === 'entrada' ? 'Recepción' : 'Uso';
+  const items = await getExtraItems(modulo);
+  items.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+  document.getElementById('extra-mov-select').innerHTML =
+    '<option value="">— Elegir —</option>' + items.map(i => `<option value="${i.id}">${escapeHtml(i.nombre)} (${i.stock || 0})</option>`).join('');
+  openModal('modal-extra-mov');
+}
+
+async function saveExtraMov(e) {
+  e.preventDefault();
+  const modulo = document.getElementById('extra-mov-modulo').value;
+  const tipo = document.getElementById('extra-mov-tipo').value;
+  const id = parseInt(document.getElementById('extra-mov-select').value);
+  const cantidad = parseInt(document.getElementById('extra-mov-cantidad').value);
+  if (!id || !cantidad) { showToast('Completa los datos'); return; }
+  const item = await getExtraItemById(modulo, id);
+  if (!item) return;
+  let stock = item.stock != null ? item.stock : 0;
+  if (tipo === 'entrada') stock += cantidad;
+  else {
+    if (stock < cantidad) { showToast('Stock insuficiente'); return; }
+    stock -= cantidad;
+  }
+  item.stock = stock;
+  item.updatedAt = new Date().toISOString();
+  await updateExtraItem(modulo, item);
+  showToast(tipo === 'entrada' ? 'Entrada registrada' : 'Salida registrada');
+  closeModal('modal-extra-mov');
+  scheduleSync();
+  loadExtraList(modulo);
+}
+
+function captureExtraPhoto() {
+  const input = document.getElementById('extra-foto-input');
+  if (input) input.click();
+}
+function handleExtraPhotoSelect(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const maxW = 600;
+      let w = img.width, h = img.height;
+      if (w > maxW) { h = (h * maxW) / w; w = maxW; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      currentExtraPhoto = canvas.toDataURL('image/jpeg', 0.7);
+      const preview = document.getElementById('extra-foto-preview');
+      if (preview) { preview.src = currentExtraPhoto; preview.style.display = 'block'; }
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function removeExtraPhoto() {
+  currentExtraPhoto = null;
+  const preview = document.getElementById('extra-foto-preview');
+  if (preview) { preview.src = ''; preview.style.display = 'none'; }
+  const input = document.getElementById('extra-foto-input');
   if (input) input.value = '';
 }

@@ -4,7 +4,7 @@ let syncTimer = null;
 let syncing = false;
 
 async function exportAllData() {
-  const [users, medicamentos, lotes, movimientos, materiales, lotesMaterial, movimientosMaterial] = await Promise.all([
+  const [users, medicamentos, lotes, movimientos, materiales, lotesMaterial, movimientosMaterial, laboratorio, vacunas] = await Promise.all([
     getUsers(),
     getMedicamentos(),
     getAllLotes(),
@@ -12,9 +12,11 @@ async function exportAllData() {
     getMateriales(),
     getAllLotesMaterial(),
     getAllMovimientosMaterial(),
+    getExtraItems('laboratorio'),
+    getExtraItems('vacunas'),
   ]);
   return {
-    version: 2,
+    version: 3,
     updatedAt: new Date().toISOString(),
     users,
     medicamentos,
@@ -23,6 +25,8 @@ async function exportAllData() {
     materiales,
     lotesMaterial,
     movimientosMaterial,
+    laboratorio,
+    vacunas,
   };
 }
 
@@ -67,6 +71,10 @@ async function importAllData(data) {
   await putAll("materiales", data.materiales || []);
   await putAll("lotesMaterial", data.lotesMaterial || []);
   await putAll("movimientosMaterial", data.movimientosMaterial || []);
+  try { await clearStore("laboratorio"); } catch (e) {}
+  try { await clearStore("vacunas"); } catch (e) {}
+  await putAll("laboratorio", data.laboratorio || []);
+  await putAll("vacunas", data.vacunas || []);
   return true;
 }
 
