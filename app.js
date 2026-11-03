@@ -438,6 +438,16 @@ function closeDetalle() {
   document.getElementById('modal-detalle').classList.remove('show');
 }
 
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add('show');
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('show');
+}
+
+
 // ========== NUEVO / EDITAR MEDICAMENTO ==========
 function openNuevoMed() {
   editingMedId = null;
@@ -451,38 +461,61 @@ function openNuevoMed() {
 }
 
 async function openEditarMed() {
-  const id = parseInt(document.getElementById('detalle-med-id').value);
-  const med = await getMedicamentoById(id);
-  if (!med) return;
+  try {
+    const rawId = document.getElementById('detalle-med-id')?.value;
+    const id = parseInt(rawId);
+    if (!id) {
+      showToast('No se pudo abrir el editor');
+      return;
+    }
+    const med = await getMedicamentoById(id);
+    if (!med) {
+      showToast('Medicamento no encontrado');
+      return;
+    }
 
-  editingMedId = id;
-  currentPhoto = med.foto || null;
-  document.getElementById('form-med-title').textContent = 'Editar medicamento';
-  document.getElementById('med-barcode').value = med.barcode || '';
-  document.getElementById('med-nombre').value = med.nombreComercial || '';
-  document.getElementById('med-principio').value = med.principioActivo || '';
-  document.getElementById('med-dosis').value = med.dosis || '';
-  document.getElementById('med-presentacion').value = med.presentacion || '';
-  document.getElementById('med-grupo').value = med.grupoTerapeutico || '';
-  document.getElementById('med-stock-minimo').value = med.stockMinimo != null ? med.stockMinimo : 0;
-  const ts = document.getElementById('med-tipo-stock');
-  if (ts) ts.value = med.tipoStock || 'cargo';
-  const est = document.getElementById('med-estupefaciente');
-  if (est) est.checked = !!med.esEstupefaciente;
-  document.getElementById('med-categoria').value = med.categoria || 'comprimidos';
-  document.getElementById('med-ubicacion').value = med.ubicacion || '';
-  document.getElementById('med-notas').value = med.notas || '';
+    editingMedId = id;
+    currentPhoto = med.foto || null;
+    const set = (idEl, val) => {
+      const el = document.getElementById(idEl);
+      if (el) el.value = val != null ? val : '';
+    };
+    const title = document.getElementById('form-med-title');
+    if (title) title.textContent = 'Editar medicamento';
+    set('med-barcode', med.barcode || '');
+    set('med-nombre', med.nombreComercial || '');
+    set('med-principio', med.principioActivo || '');
+    set('med-dosis', med.dosis || '');
+    set('med-presentacion', med.presentacion || '');
+    set('med-grupo', med.grupoTerapeutico || '');
+    set('med-stock-minimo', med.stockMinimo != null ? med.stockMinimo : 0);
+    const ts = document.getElementById('med-tipo-stock');
+    if (ts) ts.value = med.tipoStock || 'cargo';
+    const est = document.getElementById('med-estupefaciente');
+    if (est) est.checked = !!med.esEstupefaciente;
+    set('med-categoria', med.categoria || 'comprimidos');
+    set('med-ubicacion', med.ubicacion || '');
+    set('med-notas', med.notas || '');
 
-  const preview = document.getElementById('med-foto-preview');
-  if (med.foto) {
-    preview.src = med.foto;
-    preview.style.display = 'block';
-  } else {
-    preview.style.display = 'none';
+    const preview = document.getElementById('med-foto-preview');
+    if (preview) {
+      if (med.foto) {
+        preview.src = med.foto;
+        preview.style.display = 'block';
+      } else {
+        preview.src = '';
+        preview.style.display = 'none';
+      }
+    }
+
+    closeDetalle();
+    const modal = document.getElementById('modal-med');
+    if (modal) modal.classList.add('show');
+    else showToast('Formulario de edición no disponible');
+  } catch (err) {
+    console.error(err);
+    showToast('Error al abrir editor: ' + (err.message || err));
   }
-
-  closeDetalle();
-  document.getElementById('modal-med').classList.add('show');
 }
 
 function closeModalMed() {
@@ -604,39 +637,69 @@ function startScanner(targetInputId) {
     showToast('Error del escáner');
     return;
   }
+  if (typeof Html5Qrcode === 'undefined') {
+    showToast('Escáner no cargado. Abre la app una vez con internet e instálala.');
+    return;
+  }
+  if (!window.isSecureContext && location.hostname !== 'localhost') {
+    showToast('La cámara requiere HTTPS (o instalar la app como PWA).');
+    return;
+  }
+
   overlay.style.display = 'flex';
   container.innerHTML = '';
 
-  if (html5QrCode) {
-    html5QrCode.stop().catch(() => {});
-  }
+  const startCam = async () => {
+    try {
+      if (html5QrCode) {
+        try { await html5QrCode.stop(); } catch (e) {}
+        try { html5QrCode.clear(); } catch (e) {}
+      }
+      html5QrCode = new Html5Qrcode('scanner-container');
+      const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
 
-  html5QrCode = new Html5Qrcode('scanner-container');
-  const config = { fps: 10, qrbox: { width: 280, height: 160 } };
+      const onSuccess = (decodedText) => {
+        stopScanner();
+        if (targetInputId === '_login_qr_') {
+          handleQrLogin(decodedText);
+          return;
+        }
+        const input = document.getElementById(targetInputId);
+        if (input) input.value = decodedText;
+        showToast('Código leído: ' + decodedText);
+        if (targetInputId === 'mov-barcode') lookupBarcodeForMov(decodedText);
+      };
 
-  html5QrCode.start(
-    { facingMode: 'environment' },
-    config,
-    (decodedText) => {
+      // Prefer back camera; if fails try any camera
+      try {
+        await html5QrCode.start({ facingMode: 'environment' }, config, onSuccess, () => {});
+      } catch (e1) {
+        console.warn('environment cam failed', e1);
+        try {
+          await html5QrCode.start({ facingMode: 'user' }, config, onSuccess, () => {});
+        } catch (e2) {
+          const cams = await Html5Qrcode.getCameras().catch(() => []);
+          if (cams && cams.length) {
+            await html5QrCode.start(cams[0].id, config, onSuccess, () => {});
+          } else {
+            throw e2;
+          }
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      const msg = (err && err.message) ? String(err.message) : String(err);
+      if (/NotAllowed|Permission|denied/i.test(msg)) {
+        showToast('Permiso de cámara denegado. Actívalo en Ajustes del navegador.');
+      } else if (/NotFound|DevicesNotFound/i.test(msg)) {
+        showToast('No se encontró cámara en este dispositivo.');
+      } else {
+        showToast('No se pudo abrir la cámara. Prueba en Safari/Chrome e instala la app.');
+      }
       stopScanner();
-      if (targetInputId === '_login_qr_') {
-        handleQrLogin(decodedText);
-        return;
-      }
-      const input = document.getElementById(targetInputId);
-      if (input) input.value = decodedText;
-      showToast('Código leído: ' + decodedText);
-
-      if (targetInputId === 'mov-barcode') {
-        lookupBarcodeForMov(decodedText);
-      }
-    },
-    () => {}
-  ).catch(err => {
-    showToast('No se pudo acceder a la cámara. Usa HTTPS o permite el permiso.');
-    console.error(err);
-    stopScanner();
-  });
+    }
+  };
+  startCam();
 }
 
 function stopScanner() {
@@ -2078,9 +2141,18 @@ function fromDetalleExtraSalida() {
 }
 
 function fromDetalleExtraEditar() {
-  const modulo = document.getElementById('dx-modulo').value;
-  const id = parseInt(document.getElementById('dx-id').value);
-  closeDetalleExtra();
-  if (modulo === 'material') openMaterialForm(id);
-  else openExtraForm(modulo, id);
+  try {
+    const modulo = document.getElementById('dx-modulo')?.value || 'material';
+    const id = parseInt(document.getElementById('dx-id')?.value);
+    if (!id) {
+      showToast('No se pudo abrir el editor');
+      return;
+    }
+    closeDetalleExtra();
+    if (modulo === 'material') openMaterialForm(id);
+    else openExtraForm(modulo, id);
+  } catch (err) {
+    console.error(err);
+    showToast('Error al editar: ' + (err.message || err));
+  }
 }
